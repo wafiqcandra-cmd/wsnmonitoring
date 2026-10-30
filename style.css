@@ -1,0 +1,692 @@
+/* ==========================================================================
+   VARIABEL TEMA: GAMBAR 2 (DARK - DEFAULT) & GAMBAR 1 (LIGHT SAGE)
+   ========================================================================== */
+:root,
+[data-theme="dark"] {
+  /* Palet Gambar 2 (Arounda Dark Neon Lime) */
+  --bg-outer: #0d1f17;
+  --bg-sidebar: #111315;
+  --bg-main: #16191d;
+  --bg-card: #1f242a;
+  --bg-card-hover: #262c34;
+  --bg-card-accent: linear-gradient(135deg, #1b3b2b 0%, #12241b 100%);
+  --bg-input: #1b1f24;
+  --border-color: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(163, 230, 53, 0.35);
+
+  --text-primary: #f3f5f7;
+  --text-secondary: #9ba3ae;
+  --text-muted: #646d78;
+
+  --accent-primary: #a3e635;      /* Neon Lime Gambar 2 */
+  --accent-primary-text: #0f170a;
+  --accent-secondary: #22c55e;    /* Emerald Green */
+  --accent-soft: rgba(163, 230, 53, 0.14);
+
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.15);
+  --warning: #f59e0b;
+
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+}
+
+[data-theme="light"] {
+  /* Palet Gambar 1 (AeuxGlobal Clean White & Forest/Sage Green) */
+  --bg-outer: #176b3a;
+  --bg-sidebar: #102119;
+  --bg-main: #f4f6f4;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f9fbf9;
+  --bg-card-accent: #d8e6db;      /* Kartu Sage Green Gambar 1 */
+  --bg-input: #192d23;
+  --border-color: #e4e9e5;
+  --border-strong: #22c55e;
+
+  --text-primary: #111915;
+  --text-secondary: #526058;
+  --text-muted: #829188;
+
+  --accent-primary: #22c55e;
+  --accent-primary-text: #ffffff;
+  --accent-secondary: #15803d;
+  --accent-soft: #e3f2e7;
+
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --warning: #d97706;
+
+  --shadow-card: 0 4px 20px rgba(16, 33, 25, 0.05);
+}
+
+/* ==========================================================================
+   RESET & BASE TYPOGRAPHY
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: radial-gradient(circle at top right, #1f8a4c, var(--bg-outer) 70%);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   APP SHELL (SIDEBAR KIRI + PANEL UTAMA KANAN)
+   ========================================================================== */
+.app-shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  min-height: calc(100vh - 32px);
+  background: var(--bg-sidebar);
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   SIDEBAR (.masthead)
+   ========================================================================== */
+.masthead {
+  background: var(--bg-sidebar);
+  color: #f3f5f7;
+  padding: 26px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.brand-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 6px;
+}
+
+.brand-logo {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 20px;
+}
+
+.brand-logo span {
+  width: 4px;
+  border-radius: 2px;
+  background: #22c55e;
+}
+.brand-logo span:nth-child(1) { height: 12px; }
+.brand-logo span:nth-child(2) { height: 20px; background: var(--accent-primary); }
+.brand-logo span:nth-child(3) { height: 15px; }
+
+.masthead h1 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #ffffff;
+}
+
+/* Workspace Selector Box (Adaptasi Gambar 1) */
+.workspace-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+}
+
+.workspace-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #22c55e, #15803d);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.workspace-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workspace-label {
+  font-size: 0.72rem;
+  color: #8fa197;
+}
+
+.workspace-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.nav-section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #6c7a73;
+  padding: 0 8px;
+}
+
+/* Menu Utama */
+.masthead nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.masthead nav button {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #9ba8a1;
+  transition: all 0.2s ease;
+}
+
+.masthead nav button svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.masthead nav button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+/* Tombol Aktif Bergaya Pill Neon Lime (Gambar 2) / Dark Pill (Gambar 1) */
+.masthead nav button.selected {
+  background: var(--accent-primary);
+  color: var(--accent-primary-text);
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(163, 230, 53, 0.25);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.theme-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.theme-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.theme-btn {
+  border: none;
+  background: transparent;
+  color: #9ba8a1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.theme-btn.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.system-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+}
+
+.system-status strong {
+  display: block;
+  font-size: 0.82rem;
+  color: #e2e8f0;
+}
+
+.system-status small {
+  font-size: 0.72rem;
+  color: #7c8b83;
+}
+
+/* ==========================================================================
+   MAIN CONTENT & TOPBAR (.controls)
+   ========================================================================== */
+main {
+  background: var(--bg-main);
+  border-radius: 24px 0 0 24px;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  overflow-x: hidden;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.breadcrumb {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.page-title,
+#title {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.topbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Filter Algoritma & Pill Controls */
+.algorithm-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.algorithm-label select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.algorithm-label select option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border-strong);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.countdown strong {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+
+.btn-icon,
+#refresh {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-icon:hover,
+#refresh:hover {
+  border-color: var(--accent-primary);
+}
+
+/* Dropdown Log Menu (Bergaya Tombol Hitam 'Add Custom Widget' Gambar 1) */
+.log-menu {
+  position: relative;
+}
+
+.log-menu summary {
+  list-style: none;
+  cursor: pointer;
+  background: #111915;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  user-select: none;
+}
+
+[data-theme="dark"] .log-menu summary {
+  background: var(--accent-primary);
+  color: var(--accent-primary-text);
+  border-color: transparent;
+}
+
+.log-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.log-menu > div {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  min-width: 170px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 40;
+}
+
+.log-menu button {
+  all: unset;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.log-menu button:hover {
+  background: var(--bg-card-hover);
+}
+
+.log-menu button.danger-text {
+  color: var(--danger);
+}
+
+/* ==========================================================================
+   FEEDBACK & BENTO GRID CONTENT (#content)
+   ========================================================================== */
+#feedback:not(:empty) {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+}
+
+#content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+/* Kartu Metrik & Komponen Dinamis yang Dirender oleh app.js */
+#content > *,
+.card,
+.metric-card,
+.panel,
+article,
+section.widget {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+/* Kartu Pertama Menonjol Seperti Kartu Gelap/Hijau di Gambar 1 & Gambar 2 */
+#content > :first-child {
+  background: var(--bg-card-accent);
+  border-color: var(--border-strong);
+}
+
+#content h2,
+#content h3,
+#content h4 {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+/* Angka KPI Besar Seperti $3,131,021 / 35.05 ug/m3 */
+#content .value,
+#content .stat-value,
+#content strong.big {
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+/* Grafik Canvas / SVG / Topologi */
+#content canvas,
+#content svg {
+  max-width: 100%;
+  border-radius: var(--radius-md);
+}
+
+/* Tabel Data (Adaptasi Tabel 'Plastic Recycling' & 'Customer list') */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+thead th {
+  text-align: left;
+  padding: 12px 14px;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-color);
+}
+
+tbody td {
+  padding: 13px 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+tbody tr:hover {
+  background: var(--bg-card-hover);
+}
+
+/* Tombol Umum di Dalam Konten & Modal */
+button,
+.button {
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+button.danger,
+.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ==========================================================================
+   DIALOG MODAL (#log-dialog & #confirm-dialog)
+   ========================================================================== */
+dialog {
+  margin: auto;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 880px;
+  width: calc(100% - 32px);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);
+}
+
+dialog::backdrop {
+  background: rgba(8, 12, 10, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.modal-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+#log-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+#delete-form input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ==========================================================================
+   FOOTER & RESPONSIVE
+   ========================================================================== */
+footer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 960px) {
+  body {
+    padding: 0;
+  }
+  .app-shell {
+    grid-template-columns: 1fr;
+    border-radius: 0;
+    min-height: 100vh;
+  }
+  main {
+    border-radius: 20px 20px 0 0;
+    padding: 20px 16px;
+  }
+  .masthead nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .masthead nav button {
+    white-space: nowrap;
+  }
+}

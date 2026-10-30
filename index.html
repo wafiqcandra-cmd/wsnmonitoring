@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111315">
+  <title>Monitoring WSN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css?v=4.6-gso">
+  <script src="assets/app.js?v=4.6-gso" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- SIDEBAR KIRI (Adaptasi Gambar 1 & Gambar 2) -->
+    <header class="masthead">
+      <div class="brand-box">
+        <div class="brand-logo" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <h1>MONITORING WSN</h1>
+      </div>
+
+      <div class="workspace-card">
+        <div class="workspace-icon" aria-hidden="true">✦</div>
+        <div class="workspace-info">
+          <span class="workspace-label">WSN Workspace</span>
+          <strong class="workspace-name">Multi-Hop &amp; LEACH</strong>
+        </div>
+      </div>
+
+      <div class="nav-section-label">NAVIGATION</div>
+      <nav aria-label="Menu utama">
+        <button data-view="nodes" class="selected">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button data-view="topology">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-7 12a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm14 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM10.5 8.5 6.5 15m7-6.5 4 6.5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+          <span>Topologi</span>
+        </button>
+        <button data-view="energy">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 14l4-4 4 3 5-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Grafik</span>
+        </button>
+        <button data-view="compare">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4m6-18h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-3-18v18" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+          <span>Perbandingan</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="theme-switcher">
+          <span class="nav-section-label">TAMPILAN TEMA</span>
+          <div class="theme-buttons">
+            <button type="button" id="theme-light" class="theme-btn" title="Tema Terang (Gambar 1)">Aeux Light</button>
+            <button type="button" id="theme-dark" class="theme-btn active" title="Tema Gelap (Gambar 2)">Arounda Dark</button>
+          </div>
+        </div>
+        <div class="system-status">
+          <span class="status-dot"></span>
+          <div>
+            <strong>Telemetry Active</strong>
+            <small>Interval 60 detik</small>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- AREA UTAMA -->
+    <main>
+      <!-- TOPBAR & CONTROLS -->
+      <div class="controls">
+        <div class="topbar-left">
+          <span class="breadcrumb">Dashboards <span>/</span></span>
+          <span id="title" class="page-title">Dashboard</span>
+        </div>
+
+        <div class="topbar-right">
+          <label class="algorithm-label">
+            <span>Algoritma</span>
+            <select id="algorithm">
+              <option value="multihop_murni">Multihop Murni</option>
+              <option value="multihop_pso">Multihop-PSO</option>
+              <option value="multihop_gso">Multihop-GSO</option>
+              <option value="leach_murni">LEACH Murni</option>
+              <option value="leach_pso">LEACH-PSO</option>
+              <option value="leach_gso">LEACH-GSO</option>
+            </select>
+          </label>
+
+          <div class="countdown" title="Pembaruan berikutnya">
+            <span class="countdown-label">Pembaruan berikutnya</span>
+            <strong id="countdown">01:00</strong>
+          </div>
+
+          <button id="refresh" class="btn-icon" title="Perbarui Data">
+            Perbarui
+          </button>
+
+          <details class="log-menu">
+            <summary>Menu Log</summary>
+            <div class="log-dropdown">
+              <button id="all-log">View All Log</button>
+              <button id="delete-all" class="danger-text">Delete All Log</button>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- NOTIFIKASI / FEEDBACK -->
+      <div id="feedback" role="status" aria-live="polite"></div>
+
+      <!-- KONTEN DINAMIS WSN -->
+      <section id="content" aria-busy="true">
+        <p class="loading-state">Memuat data…</p>
+      </section>
+
+      <!-- FOOTER -->
+      <footer>
+        <strong>Monitoring WSN</strong>
+        <span>Data perangkat · interval pembaruan 60 detik</span>
+      </footer>
+    </main>
+  </div>
+
+  <!-- MODAL RIWAYAT NODE -->
+  <dialog id="log-dialog" aria-labelledby="log-title">
+    <div class="modal-head">
+      <div>
+        <h2 id="log-title">Riwayat Node</h2>
+        <p id="log-context" class="muted"></p>
+      </div>
+      <div class="modal-actions">
+        <a id="download-log" class="button" href="#">Unduh CSV</a>
+        <button id="delete-log" class="danger">Hapus Log</button>
+        <button id="close-log">Tutup</button>
+      </div>
+    </div>
+    <div id="log-scroll" tabindex="0">
+      <table>
+        <thead id="log-head"></thead>
+        <tbody id="log-body"></tbody>
+      </table>
+      <p id="log-status" role="status">Memuat…</p>
+    </div>
+  </dialog>
+
+  <!-- MODAL KONFIRMASI HAPUS -->
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <h2 id="confirm-title">Hapus rekaman?</h2>
+    <p id="confirm-text"></p>
+    <p>Penghapusan permanen. Ketik <strong>HAPUS</strong> untuk melanjutkan.</p>
+    <form id="delete-form">
+      <label>Konfirmasi
+        <input id="delete-word" autocomplete="off" required pattern="HAPUS" placeholder="Ketik HAPUS">
+      </label>
+      <p id="delete-error" role="alert"></p>
+      <div class="modal-actions">
+        <button type="button" id="cancel-delete">Batal</button>
+        <button class="danger" type="submit">Hapus rekaman</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- SCRIPT PENGATUR TEMA GAMBAR 1 & GAMBAR 2 -->
+  <script>
+    (function() {
+      const root = document.documentElement;
+      const btnLight = document.getElementById('theme-light');
+      const btnDark = document.getElementById('theme-dark');
+      const savedTheme = localStorage.getItem('wsn_theme') || 'dark';
+
+      function applyTheme(theme) {
+        root.setAttribute('data-theme', theme);
+        localStorage.setItem('wsn_theme', theme);
+        btnLight?.classList.toggle('active', theme === 'light');
+        btnDark?.classList.toggle('active', theme === 'dark');
+      }
+
+      applyTheme(savedTheme);
+      btnLight?.addEventListener('click', () => applyTheme('light'));
+      btnDark?.addEventListener('click', () => applyTheme('dark'));
+    })();
+  </script>
+</body>
+</html>
