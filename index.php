@@ -8,12 +8,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=5.0-supabase">
-  <script src="app.js?v=5.0-supabase" defer></script>
+  <link rel="stylesheet" href="style.css?v=<?= time() ?>">
+  <script src="app.js?v=<?= time() ?>" defer></script>
 </head>
 <body>
   <div class="app-shell">
-    <!-- SIDEBAR NAVIGASI KIRI (Gaya AeuxGlobal Gambar 1 & Arounda Gambar 2) -->
     <header class="masthead">
       <div class="brand-box">
         <div class="brand-logo" aria-hidden="true">
@@ -38,11 +37,11 @@
         </button>
         <button data-view="topology">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-7 12a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm14 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM10.5 8.5 6.5 15m7-6.5 4 6.5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-          <span>Topologi</span>
+          <span>Topologi &amp; Rute</span>
         </button>
         <button data-view="energy">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 14l4-4 4 3 5-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span>Grafik</span>
+          <span>Grafik &amp; Energi</span>
         </button>
         <button data-view="compare">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4m6-18h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-3-18v18" stroke="currentColor" stroke-width="2" fill="none"/></svg>
@@ -69,7 +68,6 @@
       </div>
     </header>
 
-    <!-- PANEL UTAMA KANAN -->
     <main>
       <div class="controls">
         <div class="topbar-left">
@@ -121,7 +119,6 @@
     </main>
   </div>
 
-  <!-- MODAL RIWAYAT NODE -->
   <dialog id="log-dialog" aria-labelledby="log-title">
     <div class="modal-head">
       <div>
@@ -143,7 +140,6 @@
     </div>
   </dialog>
 
-  <!-- MODAL KONFIRMASI HAPUS -->
   <dialog id="confirm-dialog" aria-labelledby="confirm-title">
     <h2 id="confirm-title">Hapus rekaman?</h2>
     <p id="confirm-text"></p>
