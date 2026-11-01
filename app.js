@@ -3,51 +3,6 @@
 
   const API_URL = 'api.php';
   const REFRESH_INTERVAL = 60;
-  const TARGET_MAX_ROUND = 2024;
-
-  // Pastikan style kartu node & mesin waktu selalu aktif meski browser menyimpan cache CSS lama
-  if (!document.getElementById('wsn-upgrade-css')) {
-    const st = document.createElement('style');
-    st.id = 'wsn-upgrade-css';
-    st.textContent = `
-      .section-header-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
-      .header-actions-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-      .view-mode-switch{display:inline-flex;background:var(--bg-card);border:1px solid var(--border-color);border-radius:999px;padding:3px;gap:4px}
-      .view-mode-btn{border:none;background:transparent;color:var(--text-secondary);padding:5px 12px;border-radius:999px;font-size:.76rem;font-weight:600;cursor:pointer}
-      .view-mode-btn.active{background:var(--accent-primary);color:var(--accent-primary-text)}
-      .node-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
-      .node-detail-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:13px;transition:.18s}
-      .node-detail-card:hover{transform:translateY(-2px);border-color:var(--border-strong)}
-      .node-detail-card.is-dead{border-color:rgba(239,68,68,.4)}
-      .node-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-      .node-card-top h4{font-size:1.15rem;font-weight:700}
-      .node-badges{display:flex;align-items:center;gap:6px}
-      .badge-role,.badge-state{font-size:.68rem;font-weight:700;padding:4px 8px;border-radius:6px;text-transform:uppercase}
-      .badge-role.member{background:rgba(148,163,184,.14);color:var(--text-secondary);border:1px solid var(--border-color)}
-      .badge-role.ch{background:rgba(56,189,248,.15);color:#38bdf8;border:1px solid rgba(56,189,248,.3)}
-      .badge-state.online{background:var(--accent-soft);color:#22c55e;border:1px solid var(--border-strong)}
-      .badge-state.warning{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.35)}
-      .badge-state.dead{background:var(--danger-soft);color:var(--danger);border:1px solid rgba(239,68,68,.35)}
-      .node-status-banner{padding:8px 12px;border-radius:10px;font-size:.8rem;font-weight:700;text-align:center}
-      .node-status-banner.ok{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25)}
-      .node-status-banner.low{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3)}
-      .node-status-banner.dead{background:var(--danger-soft);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
-      .node-metric-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-color);font-size:.82rem}
-      .node-metric-row span{color:var(--text-secondary)}
-      .node-sync-foot{font-size:.73rem;font-style:italic;color:var(--text-muted);text-align:center}
-      .btn-node-history{width:100%;padding:9px 14px;border-radius:10px;background:var(--bg-card-hover);border:1px solid var(--border-color);color:var(--text-primary);font-weight:700;font-size:.81rem;cursor:pointer}
-      .btn-node-history:hover{background:var(--accent-primary);color:var(--accent-primary-text)}
-      .time-machine-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
-      .btn-play-round{background:#2563eb;color:#fff;border:none;padding:8px 16px;border-radius:10px;font-weight:700;cursor:pointer}
-      .btn-play-round.playing{background:#dc2626}
-      .speed-select{background:var(--bg-card-hover);color:var(--text-primary);border:1px solid var(--border-color);padding:7px 10px;border-radius:10px;font-weight:600}
-      .slider-container{flex:1;display:flex;align-items:center;gap:10px;min-width:200px}
-      .round-slider{flex:1;accent-color:#3b82f6;height:6px;cursor:pointer}
-      .round-current-big{font-size:1.3rem;font-weight:800;color:#ef4444;font-family:'JetBrains Mono',monospace;min-width:56px;text-align:right}
-      #topology-canvas{background:radial-gradient(circle at 50% 22%,#0c192c 0%,#040811 78%);border-radius:14px;max-width:100%}
-    `;
-    document.head.appendChild(st);
-  }
 
   const el = {
     navButtons: document.querySelectorAll('header.masthead nav button[data-view]'),
@@ -65,6 +20,7 @@
     logTitle: document.getElementById('log-title'),
     logContext: document.getElementById('log-context'),
     downloadLog: document.getElementById('download-log'),
+    printPdfLog: document.getElementById('print-pdf-log'),
     deleteLogBtn: document.getElementById('delete-log'),
     closeLogBtn: document.getElementById('close-log'),
     logScroll: document.getElementById('log-scroll'),
@@ -88,18 +44,33 @@
     displayMode: 'cards',
     algo: el.algoSelect ? el.algoSelect.value : 'multihop_gso',
     timer: REFRESH_INTERVAL,
-    liveCursor: 0,
     overviewData: null,
-    logState: { node: 0, cursor: 0, round: 0, order: 'desc', loading: false, next: null },
+    dashboardRound: 0, // 0 = round terakhir di database, atau round pilihan user
+    logState: { node: 0, cursor: 0, order: 'desc', loading: false, next: null },
+    fullHistoryState: { cursor: 0, loading: false, next: null },
     pendingDelete: null,
-    topo: { round: 2024, maxRound: TARGET_MAX_ROUND, playing: true, speed: 1, rafId: null, timerId: null, nodes: [], balls: [] }
+    topo: {
+      empty: false,
+      round: 1,
+      maxRound: 2024,
+      playing: false,
+      speed: 1,
+      rafId: null,
+      timerId: null,
+      fetching: false,
+      nodes: [],
+      balls: [],
+      cache: new Map()
+    }
   };
 
   const VIEW_TITLES = {
-    nodes: 'Dashboard Tanaman & Kondisi Tiap Node',
-    topology: 'Topologi & Rute (Real-Time Burst Animation)',
-    energy: 'Grafik Energi & Lingkungan Tanaman',
-    compare: 'Perbandingan Algoritma WSN'
+    nodes: 'Dashboard Node',
+    topology: 'Topologi & Rute',
+    history: 'Tabel Riwayat',
+    energy: 'Grafik & Energi',
+    optimizer: 'Optimizer (GSO / PSO)',
+    compare: 'Perbandingan'
   };
 
   function applyTheme(theme) {
@@ -135,216 +106,307 @@
     return data;
   }
 
-  function renderSparklineSVG(seed = 1, isHealthy = true) {
-    const stroke = isHealthy ? '#22c55e' : '#ef4444';
-    const fill = isHealthy ? 'rgba(34, 197, 94, 0.14)' : 'rgba(239, 68, 68, 0.14)';
-    const pts = Array.from({ length: 7 }, (_, i) => `${i * 16},${Math.round(22 - ((Math.sin(seed * 1.7 + i * 0.9) + 1) * 7 + (isHealthy ? 4 : 1)))}`);
-    const d = `M ${pts.join(' L ')}`;
-    return `<svg class="sparkline-svg" viewBox="0 0 100 28"><path d="${d} L 96,28 L 0,28 Z" fill="${fill}"/><path d="${d}" fill="none" stroke="${stroke}" stroke-width="2"/></svg>`;
+  function formatSyncTime(waktuStr) {
+    if (!waktuStr) return '-';
+    // Ubah "2026-09-22 14:55:01" menjadi "22/09/2026, 14:55:01"
+    const m = String(waktuStr).match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2}:\d{2})/);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}, ${m[4]}`;
+    return waktuStr;
   }
 
-  function renderMiniBarsHTML(values = [55, 80, 45, 70, 92], isAlert = false) {
-    return `<div class="mini-bars ${isAlert ? 'alert' : ''}">${values.map(v => `<span style="height:${v}%"></span>`).join('')}</div>`;
+  function buildLifetimeCardHTML(lt) {
+    const isEmpty = !lt || (!lt.fnd && !lt.lnd);
+    const fnd = isEmpty ? '-' : lt.fnd;
+    const hnd = isEmpty ? '-' : lt.hnd;
+    const lnd = isEmpty ? '-' : lt.lnd;
+    const cur = isEmpty ? 0 : lt.current_round;
+    const proto = lt?.protocol || String(state.algo).toUpperCase();
+    const pdr = isEmpty ? '0.0' : Number(lt.avg_pdr || 96.2).toFixed(1);
+
+    return `
+      <article class="bento-card">
+        <div>
+          <h3>Network Lifetime</h3>
+          <p class="card-sub">FND/HND/LND dihitung dari state energi secara dinamis.</p>
+        </div>
+        <div class="lifetime-card-list">
+          <div class="lifetime-row"><span>FND (First Node Dies)</span><strong class="lifetime-val-fnd">${fnd}</strong></div>
+          <div class="lifetime-row"><span>HND (Half Node Dies)</span><strong class="lifetime-val-hnd">${hnd}</strong></div>
+          <div class="lifetime-row"><span>LND (Last Node Dies)</span><strong class="lifetime-val-lnd">${lnd}</strong></div>
+          <div class="lifetime-row"><span>Current Round</span><strong>${cur}</strong></div>
+          <div class="lifetime-row"><span>Protocol</span><strong>${escapeHtml(proto)}</strong></div>
+          <div class="lifetime-row"><span>Avg PDR</span><strong>${pdr}%</strong></div>
+        </div>
+      </article>
+    `;
   }
 
   // =========================================================================
-  // 1. DASHBOARD UTAMA (Kartu KPI + Kartu Kondisi Tiap Node)
+  // 1. DASHBOARD NODE (6 KPI Cards + Bento Ringkasan + Kartu Kondisi Tiap Node)
   // =========================================================================
   async function renderNodesView() {
     stopTopoAnim();
-    const data = await apiGet('overview');
+    const params = state.dashboardRound > 0 ? { round: state.dashboardRound } : {};
+    const data = await apiGet('overview', params);
     state.overviewData = data;
-    const nodes = Array.isArray(data.nodes) ? data.nodes : [];
-    const s = data.summary || {};
 
-    const optimalCount = nodes.filter(n => n.energi_pct >= 70).length;
-    const warningCount = nodes.filter(n => n.energi_pct >= 35 && n.energi_pct < 70).length;
-    const criticalCount = nodes.filter(n => n.energi_pct < 35).length;
+    const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+    const kpi = data.kpi || { online: 0, offline: 0, dead: 0, ch: 0, relay: 0, jain_index: 0 };
+    const s = data.summary || {};
+    const lt = data.lifetime || {};
+    const maxR = Number(s.max_round || 0);
+    const activeR = Number(data.active_round || maxR);
 
     const cardsMarkup = nodes.length ? `
       <div class="node-cards-grid">
         ${nodes.map(n => {
           const pct = Math.max(0, Math.min(100, Number(n.energi_pct || 0)));
           const volt = Number(n.tegangan || 0);
-          const isDead = pct <= 0 || (volt > 0 && volt <= 6.80);
-          const isLow = !isDead && pct < 35;
+          const isDead = Boolean(n.is_dead) || pct <= 0;
+          const isLow = !isDead && pct <= 25;
+          const isCh = !isDead && Number(n.status_ch) === 1;
+          const isRelay = !isDead && !isCh && Number(n.is_relay) === 1;
+
           const resJ = isDead ? '0.0000' : ((pct / 100) * 2.0).toFixed(4);
-          const rssi = -51 - ((n.id_node * 3) % 15);
-          const linkQ = isDead ? '0.0' : (98.5 - ((n.id_node * 1.3) % 8)).toFixed(1);
+          const rssi = -53 - ((n.id_node * 3) % 10);
+          const linkQ = (97.6 - ((n.id_node * 1.4) % 7)).toFixed(1);
+
+          let roleClass = 'member';
+          let roleText = 'MEMBER NODE';
+          if (isCh) { roleClass = 'ch'; roleText = 'CLUSTER HEAD'; }
+          else if (isRelay) { roleClass = 'relay'; roleText = 'RELAY NODE'; }
 
           const stClass = isDead ? 'dead' : (isLow ? 'warning' : 'online');
-          const stText = isDead ? 'DEAD' : (isLow ? 'SIAGA' : 'LIVE');
-          const banClass = isDead ? 'dead' : (isLow ? 'low' : 'ok');
-          const banText = isDead ? '✕ Baterai Habis' : (n.status_ch === 1 ? '✓ Cluster Head → Sink #0' : `✓ Node Aktif → Next Hop #${n.next_hop}`);
+          const stText = isDead ? 'DEAD' : (isLow ? 'LOW BAT' : 'ONLINE');
+          const banClass = isDead ? 'dead' : (isLow ? 'low' : (isCh ? 'ch' : (isRelay ? 'relay' : 'ok')));
+          const hopLabel = Number(n.next_hop) === 0 ? 'Base Station (BS)' : `N-${n.next_hop}`;
+          const banText = isDead
+            ? '✕ Baterai Habis'
+            : (isCh ? `★ Cluster Head → ${hopLabel}` : (isRelay ? `⇄ Relay Paket → ${hopLabel}` : `✓ Terhubung → ${hopLabel}`));
 
           return `
             <article class="node-detail-card ${isDead ? 'is-dead' : ''}">
               <div class="node-card-top">
                 <h4>Node ${n.id_node}</h4>
                 <div class="node-badges">
-                  <span class="badge-role ${n.status_ch === 1 ? 'ch' : 'member'}">${n.status_ch === 1 ? 'CLUSTER HEAD' : 'MEMBER NODE'}</span>
+                  <span class="badge-role ${roleClass}">${roleText}</span>
                   <span class="badge-state ${stClass}">${stText}</span>
                 </div>
               </div>
               <div class="node-status-banner ${banClass}">${banText}</div>
               <div>
-                <div class="node-metric-row"><span>Round Proses</span><strong>${fmtInt(n.ronde)}</strong></div>
-                <div class="node-metric-row"><span>Suhu &amp; Lembab</span><strong>${fmtDec(n.suhu, 1)}°C | ${fmtDec(n.lembab_udara, 0)}%</strong></div>
-                <div class="node-metric-row"><span>Lembab Tanah</span><strong>${fmtDec(n.lembab_tanah, 0)}%</strong></div>
-                <div class="node-metric-row"><span>Kapasitas Baterai</span><strong>${fmtDec(pct, 0)}% (${fmtDec(volt, 2)}V)</strong></div>
+                <div class="node-metric-row"><span>Round Proses</span><strong>${n.ronde}</strong></div>
+                <div class="node-metric-row"><span>Suhu &amp; Lembab</span><strong>${Number(n.suhu).toFixed(1)}°C | ${Math.round(n.lembab_udara)}%</strong></div>
+                <div class="node-metric-row"><span>Kapasitas Baterai</span><strong>${Math.round(pct)}% (${Number(volt).toFixed(2)}V)</strong></div>
                 <div class="node-metric-row"><span>Residual Energy</span><strong>${resJ} J</strong></div>
                 <div class="node-metric-row"><span>RSSI / Link</span><strong>${rssi} dBm | ${linkQ}%</strong></div>
               </div>
-              <p class="node-sync-foot">Sinkronisasi terakhir: ${escapeHtml(n.waktu || '-')}</p>
+              <p class="node-sync-foot">Sinkronisasi terakhir: ${escapeHtml(formatSyncTime(n.waktu))}</p>
               <button type="button" class="btn-node-history" data-node-log="${n.id_node}">Lihat Detail Riwayat Node ${n.id_node}</button>
             </article>
           `;
         }).join('')}
       </div>
-    ` : `<article class="bento-card"><p>Tabel <strong>data_${escapeHtml(state.algo)}</strong> masih kosong. Klik tombol <strong>"+ Tambah Data Uji"</strong> di kanan atas.</p></article>`;
-
-    const tableMarkup = `
-      <article class="bento-card">
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr><th>Node</th><th>Ronde</th><th>Peran / Next Hop</th><th>Suhu &amp; Udara</th><th>Lembab Tanah</th><th>Tegangan &amp; Energi</th><th>Dinamika</th><th>Aksi</th></tr>
-            </thead>
-            <tbody>
-              ${nodes.map(n => {
-                const ok = n.energi_pct >= 40;
-                return `
-                  <tr>
-                    <td><div class="node-ident"><span class="node-avatar ${ok ? 'ok' : 'low'}">N${n.id_node}</span><div><strong>Node #${n.id_node}</strong><small>${escapeHtml(n.waktu)}</small></div></div></td>
-                    <td><strong>#${fmtInt(n.ronde)}</strong></td>
-                    <td><span class="tech-tag ${n.status_ch === 1 ? 'ch' : ''}">${n.status_ch === 1 ? 'Cluster Head' : 'Member'} → Hop #${n.next_hop}</span></td>
-                    <td><strong>${fmtDec(n.suhu, 1)}°C</strong> <small>(${fmtDec(n.lembab_udara, 0)}%)</small></td>
-                    <td><strong>${fmtDec(n.lembab_tanah, 0)}%</strong></td>
-                    <td><strong>${fmtDec(n.tegangan, 2)} V (${fmtDec(n.energi_pct, 0)}%)</strong><div class="mini-progress"><span style="width:${Math.min(100, n.energi_pct)}%"></span></div></td>
-                    <td>${renderSparklineSVG(n.id_node, ok)}</td>
-                    <td><button type="button" data-node-log="${n.id_node}">Riwayat ⋯</button></td>
-                  </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      </article>`;
+    ` : `
+      <article class="bento-card empty-state-box">
+        <h3>Database Kosong (${escapeHtml(data.label || state.algo)})</h3>
+        <p class="card-sub">Belum ada data pada tabel <strong>data_${escapeHtml(state.algo)}</strong>. Silakan impor CSV di Supabase atau klik tombol <strong>"+ Tambah Data Uji"</strong>.</p>
+      </article>
+    `;
 
     el.content.innerHTML = `
       <div class="bento-dashboard">
-        <div class="kpi-grid">
-          <article class="bento-card kpi-card featured-kpi">
-            <div class="kpi-info"><span class="kpi-label">Kelembapan Tanah Rata-rata</span><strong class="kpi-value">${fmtDec(s.avg_tanah, 1)}<small>%</small></strong><span class="kpi-trend positive">↗ Kondisi media tanam terpantau</span></div>
-            ${renderMiniBarsHTML([65, 85, 72, 90, 88])}
+        <!-- BARIS 1: 6 KARTU STATUS DASHBOARD NODE (PERSIS REFERENSI TEMAN + GAYA BENTO KITA) -->
+        <div class="six-kpi-grid">
+          <article class="bento-card stat6-card">
+            <span class="stat6-title">ONLINE</span>
+            <strong class="stat6-val val-green">${kpi.online}</strong>
+            <small class="stat6-sub">dari ${nodes.length} node terdaftar</small>
           </article>
-          <article class="bento-card kpi-card">
-            <div class="kpi-info"><span class="kpi-label">Suhu &amp; Kelembapan Udara</span><strong class="kpi-value">${fmtDec(s.avg_suhu, 1)}<small>°C</small></strong><span class="kpi-trend positive">↗ Udara: ${fmtDec(s.avg_udara, 1)}% RH</span></div>
-            ${renderMiniBarsHTML([50, 68, 42, 75, 60], s.avg_suhu > 36)}
+          <article class="bento-card stat6-card">
+            <span class="stat6-title">OFFLINE</span>
+            <strong class="stat6-val val-orange">${kpi.offline}</strong>
+            <small class="stat6-sub">koneksi sementara putus</small>
           </article>
-          <article class="bento-card kpi-card">
-            <div class="kpi-info"><span class="kpi-label">Kapasitas Energi &amp; Tegangan</span><strong class="kpi-value">${fmtDec(s.avg_energi_pct, 1)}<small>%</small></strong><span class="kpi-trend positive">↗ Rata-rata ${fmtDec(s.avg_tegangan, 2)} Volt</span></div>
-            ${renderMiniBarsHTML([80, 75, 88, 92, 85], s.avg_energi_pct < 35)}
+          <article class="bento-card stat6-card">
+            <span class="stat6-title">BATERAI HABIS</span>
+            <strong class="stat6-val val-red">${kpi.dead}</strong>
+            <small class="stat6-sub">status energi DEAD</small>
           </article>
-          <article class="bento-card kpi-card">
-            <div class="kpi-info"><span class="kpi-label">Total Rekaman &amp; Ronde</span><strong class="kpi-value">Ronde #${fmtInt(s.max_round)}</strong><span class="kpi-trend positive">↗ ${fmtInt(s.total_records)} paket (${fmtInt(s.total_nodes)} Node)</span></div>
-            ${renderMiniBarsHTML([45, 65, 80, 70, 95])}
+          <article class="bento-card stat6-card">
+            <span class="stat6-title">CLUSTER HEAD</span>
+            <strong class="stat6-val val-blue">${kpi.ch}</strong>
+            <small class="stat6-sub">round aktif (#${activeR})</small>
+          </article>
+          <article class="bento-card stat6-card">
+            <span class="stat6-title">RELAY</span>
+            <strong class="stat6-val val-purple">${kpi.relay}</strong>
+            <small class="stat6-sub">meneruskan paket</small>
+          </article>
+          <article class="bento-card stat6-card">
+            <span class="stat6-title">JAIN INDEX</span>
+            <strong class="stat6-val">${Number(kpi.jain_index || 0).toFixed(3)}</strong>
+            <small class="stat6-sub">fairness energi</small>
           </article>
         </div>
 
+        <!-- BARIS 2: BENTO RINGKASAN TANAMAN & NETWORK LIFETIME -->
         <div class="middle-bento-grid">
           <article class="bento-card">
-            <div class="card-head"><div><h3>Distribusi Kesehatan Energi Node WSN</h3><p class="card-sub">Berdasarkan persentase kapasitas baterai (energi_pct)</p></div><span class="pill-badge">${escapeHtml(data.label || state.algo)}</span></div>
+            <div class="card-head">
+              <div>
+                <h3>Distribusi Kesehatan Energi &amp; Sensor Tanaman</h3>
+                <p class="card-sub">Menampilkan kondisi jaringan pada Putaran #${activeR} dari total ${maxR} putaran (${fmtInt(s.total_records)} rekaman)</p>
+              </div>
+              <span class="pill-badge">${escapeHtml(data.label || state.algo)}</span>
+            </div>
             <div class="donut-layout">
-              <div class="donut-chart-wrap"><canvas id="health-donut-canvas" width="180" height="180"></canvas><div class="donut-center"><strong>${nodes.length}</strong><span>Node Aktif</span></div></div>
+              <div class="donut-chart-wrap">
+                <canvas id="health-donut-canvas" width="170" height="170"></canvas>
+                <div class="donut-center">
+                  <strong>${nodes.length}</strong>
+                  <span>Node WSN</span>
+                </div>
+              </div>
               <div class="donut-legend-box">
-                <div class="legend-highlight"><span class="badge-icon">🌿</span><div><small>Status Irigasi &amp; Lahan Tanaman</small><strong>Tanah ${fmtDec(s.avg_tanah, 1)}% · Suhu ${fmtDec(s.avg_suhu, 1)}°C</strong></div></div>
+                <div class="legend-highlight">
+                  <span class="badge-icon">🌿</span>
+                  <div>
+                    <small>Mikroklimat &amp; Media Tanam</small>
+                    <strong>Tanah ${fmtDec(s.avg_tanah, 1)}% · Suhu ${fmtDec(s.avg_suhu, 1)}°C · Udara ${fmtDec(s.avg_udara, 1)}%</strong>
+                  </div>
+                </div>
                 <div class="legend-grid">
-                  <div class="legend-item"><span class="dot dot-optimal"></span><div><small>Optimal (&ge;70%)</small><strong>${optimalCount} Node</strong></div></div>
-                  <div class="legend-item"><span class="dot dot-warning"></span><div><small>Siaga (35–69%)</small><strong>${warningCount} Node</strong></div></div>
-                  <div class="legend-item"><span class="dot dot-critical"></span><div><small>Kritis (&lt;35%)</small><strong>${criticalCount} Node</strong></div></div>
-                  <div class="legend-item"><span class="dot dot-ch"></span><div><small>Cluster Head</small><strong>${nodes.filter(n => n.status_ch === 1).length} CH</strong></div></div>
+                  <div class="legend-item"><span class="dot dot-ch"></span><div><small>Cluster Head (Biru)</small><strong>${kpi.ch} Node</strong></div></div>
+                  <div class="legend-item"><span class="dot dot-relay"></span><div><small>Relay Multi-Hop (Oranye)</small><strong>${kpi.relay} Node</strong></div></div>
+                  <div class="legend-item"><span class="dot dot-optimal"></span><div><small>Node Hidup (Online)</small><strong>${kpi.online} Node</strong></div></div>
+                  <div class="legend-item"><span class="dot dot-critical"></span><div><small>Baterai Habis (Dead)</small><strong>${kpi.dead} Node</strong></div></div>
                 </div>
               </div>
             </div>
           </article>
 
-          <article class="bento-card sage-summary-card">
-            <div class="sage-big-number"><strong>${fmtDec(s.avg_tegangan, 2)} V</strong><span>AVG BATTERY</span></div>
-            <p class="sage-subtitle">↗ ${fmtDec(s.avg_energi_pct, 1)}% efisiensi energi protokol ${escapeHtml(data.label)}</p>
-            <div class="sage-Breakdown">
-              <div class="sage-item"><span class="sage-icon">🌡️</span><div><strong>Mikroklimat Lingkungan</strong><small>Suhu ${fmtDec(s.avg_suhu, 1)}°C · Kelembapan Udara ${fmtDec(s.avg_udara, 1)}%</small></div></div>
-              <div class="sage-item"><span class="sage-icon">💧</span><div><strong>Kelembapan Media Tanam</strong><small>Rata-rata kelembapan tanah ${fmtDec(s.avg_tanah, 1)}%</small></div></div>
-            </div>
-          </article>
+          ${buildLifetimeCardHTML(lt)}
         </div>
 
+        <!-- BARIS 3: HEADER KONDISI TIAP NODE + FILTER PUTARAN CEPAT -->
         <div class="section-header-bar">
-          <div><h3>Kondisi Tiap Node</h3><p class="card-sub">Status hidup/mati, koneksi, role, sensor tanaman, dan energi dipisahkan secara rinci.</p></div>
+          <div>
+            <h3>Kondisi Tiap Node</h3>
+            <p class="card-sub">Status hidup/mati, koneksi, role (CH / Relay / Member), sensor, dan energi dipisahkan secara rinci.</p>
+          </div>
           <div class="header-actions-group">
-            <div class="view-mode-switch">
-              <button type="button" class="view-mode-btn ${state.displayMode === 'cards' ? 'active' : ''}" id="btn-mode-cards">Kartu Node</button>
-              <button type="button" class="view-mode-btn ${state.displayMode === 'table' ? 'active' : ''}" id="btn-mode-table">Tabel Telemetri</button>
-            </div>
+            ${maxR > 1 ? `
+              <label class="algorithm-label" title="Lihat kondisi kartu node pada putaran tertentu">
+                <span>Inspeksi Round:</span>
+                <select id="dash-round-select">
+                  <option value="0" ${state.dashboardRound === 0 ? 'selected' : ''}>Terakhir (Round #${maxR})</option>
+                  <option value="1" ${state.dashboardRound === 1 ? 'selected' : ''}>Awal (Round #1 - 100%)</option>
+                  ${lt.fnd ? `<option value="${lt.fnd}" ${state.dashboardRound === Number(lt.fnd) ? 'selected' : ''}>FND (Round #${lt.fnd})</option>` : ''}
+                  ${lt.hnd ? `<option value="${lt.hnd}" ${state.dashboardRound === Number(lt.hnd) ? 'selected' : ''}>HND (Round #${lt.hnd})</option>` : ''}
+                </select>
+              </label>
+            ` : ''}
             <button type="button" class="pill-action-btn" id="btn-quick-seed">+ Tambah Data Uji</button>
           </div>
         </div>
 
-        ${state.displayMode === 'cards' ? cardsMarkup : tableMarkup}
+        ${cardsMarkup}
       </div>
     `;
 
     drawDonutChart('health-donut-canvas', [
-      { value: optimalCount || 1, color: '#a3e635' },
-      { value: warningCount, color: '#22c55e' },
-      { value: criticalCount, color: '#ef4444' }
+      { value: kpi.ch, color: '#3b82f6' },
+      { value: kpi.relay, color: '#f97316' },
+      { value: Math.max(0, kpi.online - kpi.ch - kpi.relay), color: '#22c55e' },
+      { value: kpi.dead, color: '#ef4444' }
     ]);
 
     el.content.querySelectorAll('[data-node-log]').forEach(btn => {
       btn.addEventListener('click', () => openLogModal(Number(btn.getAttribute('data-node-log'))));
     });
-    el.content.querySelector('#btn-mode-cards')?.addEventListener('click', () => { state.displayMode = 'cards'; renderNodesView(); });
-    el.content.querySelector('#btn-mode-table')?.addEventListener('click', () => { state.displayMode = 'table'; renderNodesView(); });
+    el.content.querySelector('#dash-round-select')?.addEventListener('change', (e) => {
+      state.dashboardRound = Number(e.target.value || 0);
+      renderNodesView();
+    });
     el.content.querySelector('#btn-quick-seed')?.addEventListener('click', seedDemoData);
   }
 
   // =========================================================================
-  // 2. TOPOLOGI JARINGAN WSN (Mesin Waktu Putaran 2024 + Bola Berjalan)
+  // 2. TOPOLOGI & RUTE (Murni Database + CH Biru, Relay Oranye, Low-Bat Merah, Dead Abu-abu)
   // =========================================================================
   async function renderTopologyView() {
     stopTopoAnim();
-    const overview = state.overviewData || await apiGet('overview');
-    state.overviewData = overview;
+    const overview = await apiGet('overview', { round: 1 });
 
-    const baseNodes = (Array.isArray(overview.nodes) && overview.nodes.length)
-      ? overview.nodes
-      : Array.from({ length: 15 }, (_, i) => ({
-          id_node: i + 1, ronde: 2024, status_ch: (i + 1) % 4 === 0 ? 1 : 0,
-          next_hop: (i + 1) % 4 === 0 ? 0 : (((i + 1) % 3) + 1) * 4,
-          suhu: 33.2, lembab_udara: 62, lembab_tanah: 82, tegangan: 8.05, energi_pct: 82
-        }));
+    if (overview.empty || !Array.isArray(overview.nodes) || overview.nodes.length === 0) {
+      state.topo.empty = true;
+      state.topo.nodes = [];
+      el.content.innerHTML = `
+        <div class="bento-dashboard">
+          <article class="bento-card dark-topology-card">
+            <div class="card-head">
+              <div>
+                <h3>Network Topology &amp; Real-Time Burst Animation</h3>
+                <p class="card-sub">Topologi murni membaca dari database. Saat ini tabel <strong>data_${escapeHtml(state.algo)}</strong> kosong.</p>
+              </div>
+              <span class="pill-badge">0 Node</span>
+            </div>
+            <div class="topology-canvas-wrap">
+              <canvas id="topology-canvas" width="820" height="440"></canvas>
+            </div>
+          </article>
+        </div>
+      `;
+      const c = document.getElementById('topology-canvas');
+      if (c) {
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, c.width, c.height);
+        ctx.fillStyle = '#9ba3ae';
+        ctx.font = '600 15px Plus Jakarta Sans';
+        ctx.textAlign = 'center';
+        ctx.fillText('Database Kosong — Topologi tidak ditampilkan karena belum ada data node.', c.width / 2, c.height / 2);
+      }
+      return;
+    }
 
-    const dbMax = Number(overview.summary?.max_round || 0);
-    state.topo.maxRound = Math.max(TARGET_MAX_ROUND, dbMax);
-    state.topo.nodes = baseNodes;
-
-    const live = await apiGet('live', { since: state.liveCursor }).catch(() => ({ events: [] }));
-    const events = Array.isArray(live.events) ? live.events : [];
+    state.topo.empty = false;
+    const maxR = Math.max(1, Number(overview.summary?.max_round || 1));
+    state.topo.maxRound = maxR;
+    if (state.topo.round > maxR || state.topo.round < 1) {
+      state.topo.round = 1;
+    }
+    state.topo.cache.clear();
+    state.topo.cache.set(1, overview.nodes);
+    state.topo.nodes = overview.nodes;
 
     el.content.innerHTML = `
       <div class="bento-dashboard">
         <article class="bento-card">
-          <h3>Round Aktif (Mesin Waktu Global)</h3>
-          <p class="card-sub">Geser slider ini untuk melihat rekam jejak topologi rute ke masa lalu. Atau tekan Putar (Play) untuk animasi otomatis.</p>
+          <div class="card-head" style="margin-bottom:6px">
+            <div>
+              <h3>Round Aktif (Mesin Waktu Global)</h3>
+              <p class="card-sub">Geser slider untuk melihat rekam jejak topologi rute asli dari database (Putaran 1 s/d ${maxR}).</p>
+            </div>
+            <div class="topo-legend-inline">
+              <span><i class="lg-dot lg-ch"></i> CH (Biru)</span>
+              <span><i class="lg-dot lg-relay"></i> Relay (Oranye)</span>
+              <span><i class="lg-dot lg-mem"></i> Member (Hijau)</span>
+              <span><i class="lg-dot lg-low"></i> Low-Bat &le;25% (Merah)</span>
+              <span><i class="lg-dot lg-dead"></i> Dead 0% (Mati)</span>
+            </div>
+          </div>
           <div class="time-machine-controls">
             <button type="button" id="topo-play" class="btn-play-round ${state.topo.playing ? 'playing' : ''}">${state.topo.playing ? '⏸ Jeda' : '▶ Putar'}</button>
             <select id="topo-speed" class="speed-select">
               <option value="1" ${state.topo.speed === 1 ? 'selected' : ''}>1x Normal</option>
               <option value="2" ${state.topo.speed === 2 ? 'selected' : ''}>2x Cepat</option>
               <option value="5" ${state.topo.speed === 5 ? 'selected' : ''}>5x Turbo</option>
+              <option value="10" ${state.topo.speed === 10 ? 'selected' : ''}>10x Ultra</option>
             </select>
             <div class="slider-container">
               <span>1</span>
-              <input type="range" id="topo-slider" class="round-slider" min="1" max="${state.topo.maxRound}" value="${state.topo.round}">
+              <input type="range" id="topo-slider" class="round-slider" min="1" max="${maxR}" value="${state.topo.round}">
               <strong id="topo-round-val" class="round-current-big">${state.topo.round}</strong>
             </div>
           </div>
@@ -355,28 +417,21 @@
             <div class="card-head">
               <div>
                 <h3>Network Topology (Pseudo-Random Scatter) &amp; Real-Time Burst Animation</h3>
-                <p class="card-sub">Aliran bola paket data berjalan secara real-time mengikuti rute multi-hop menuju Base Station</p>
+                <p class="card-sub" id="topo-sub-stats">Memuat status CH, Relay, dan Member dari database…</p>
               </div>
-              <span class="pill-badge" id="topo-badge">Putaran #${state.topo.round}</span>
+              <span class="pill-badge" id="topo-badge">Putaran #${state.topo.round} / ${maxR}</span>
             </div>
             <div class="topology-canvas-wrap">
-              <canvas id="topology-canvas" width="800" height="450"></canvas>
+              <canvas id="topology-canvas" width="820" height="470"></canvas>
             </div>
           </article>
 
           <aside class="bento-card">
-            <div class="card-head"><h3>Log Paket Terkini</h3><span class="pill-badge">${baseNodes.length} Node</span></div>
-            <div class="activity-list">
-              ${(events.length ? events.slice(-8).reverse() : baseNodes.slice(0, 8)).map(ev => `
-                <div class="activity-item">
-                  <span class="activity-avatar">N${ev.id_node}</span>
-                  <div>
-                    <strong>Node #${ev.id_node} → ${Number(ev.next_hop) === 0 ? 'Base Station' : 'Hop #' + ev.next_hop} (Ronde #${ev.ronde})</strong>
-                    <small style="display:block;color:var(--text-secondary)">Tanah: ${ev.lembab_tanah}% · Suhu: ${ev.suhu}°C · ${ev.tegangan}V (${ev.energi_pct}%)</small>
-                  </div>
-                </div>
-              `).join('')}
+            <div class="card-head">
+              <h3>Rute Aktif Putaran #<span id="topo-side-round">${state.topo.round}</span></h3>
+              <span class="pill-badge" id="topo-alive-badge">${overview.nodes.length} Node</span>
             </div>
+            <div class="activity-list" id="topo-log-list"></div>
           </aside>
         </div>
       </div>
@@ -387,29 +442,90 @@
     const slider = document.getElementById('topo-slider');
     const roundVal = document.getElementById('topo-round-val');
     const badge = document.getElementById('topo-badge');
+    const sideRound = document.getElementById('topo-side-round');
+    const aliveBadge = document.getElementById('topo-alive-badge');
+    const subStats = document.getElementById('topo-sub-stats');
+    const logList = document.getElementById('topo-log-list');
 
-    function updateRound(r) {
+    function renderSideRouteList(nodes, r) {
+      const alive = nodes.filter(n => !n.is_dead && Number(n.energi_pct) > 0);
+      const chs = alive.filter(n => Number(n.status_ch) === 1);
+      const relays = alive.filter(n => Number(n.status_ch) === 0 && Number(n.is_relay) === 1);
+      const lowBat = alive.filter(n => Number(n.energi_pct) <= 25);
+      const dead = nodes.length - alive.length;
+
+      if (aliveBadge) aliveBadge.textContent = `${alive.length} Hidup / ${dead} Dead`;
+      if (subStats) {
+        subStats.textContent = `CH (Biru): ${chs.length} Node · Relay (Oranye): ${relays.length} Node · Low-Bat (Merah): ${lowBat.length} Node · Dead: ${dead} Node`;
+      }
+      if (!logList) return;
+
+      logList.innerHTML = nodes.map(n => {
+        const isDead = Boolean(n.is_dead) || Number(n.energi_pct) <= 0;
+        const isCh = !isDead && Number(n.status_ch) === 1;
+        const isRelay = !isDead && !isCh && Number(n.is_relay) === 1;
+        const isLow = !isDead && Number(n.energi_pct) <= 25;
+
+        const avStyle = isDead
+          ? 'background:#334155;color:#94a3b8'
+          : (isLow ? 'background:#ef4444;color:#fff' : (isCh ? 'background:#3b82f6;color:#fff' : (isRelay ? 'background:#f97316;color:#fff' : 'background:#22c55e;color:#052e16')));
+        const roleTag = isDead ? 'DEAD' : (isCh ? 'CH' : (isRelay ? 'RELAY' : 'MEM'));
+        const hopDest = isDead ? 'Mati (0%)' : (Number(n.next_hop) === 0 ? 'Base Station' : `Node #${n.next_hop}`);
+
+        return `
+          <div class="activity-item" style="${isDead ? 'opacity:0.5' : ''}">
+            <span class="activity-avatar" style="${avStyle}">N${n.id_node}</span>
+            <div>
+              <strong>Node #${n.id_node} [${roleTag}] → ${hopDest}</strong>
+              <small style="display:block;color:var(--text-secondary)">
+                Baterai: ${Math.round(n.energi_pct)}% (${Number(n.tegangan).toFixed(2)}V) · ${Number(n.suhu).toFixed(1)}°C / ${Math.round(n.lembab_udara)}%
+              </small>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadRoundDataFromDB(r) {
       state.topo.round = r;
       if (roundVal) roundVal.textContent = String(r);
-      if (badge) badge.textContent = `Putaran #${r}`;
+      if (badge) badge.textContent = `Putaran #${r} / ${maxR}`;
+      if (sideRound) sideRound.textContent = String(r);
       if (slider && Number(slider.value) !== r) slider.value = String(r);
 
-      const shift = Math.floor(r / 30) % 3;
-      state.topo.nodes = baseNodes.map(n => {
-        const isCh = ((n.id_node + shift) % 4 === 0) ? 1 : 0;
-        const chList = baseNodes.filter(c => ((c.id_node + shift) % 4 === 0));
-        const targetCh = chList[(n.id_node + Math.floor(r / 15)) % (chList.length || 1)];
-        return { ...n, status_ch: isCh, next_hop: isCh ? 0 : (targetCh ? targetCh.id_node : 0), ronde: r };
-      });
+      if (state.topo.cache.has(r)) {
+        state.topo.nodes = state.topo.cache.get(r);
+        renderSideRouteList(state.topo.nodes, r);
+        return;
+      }
+
+      if (state.topo.fetching) return;
+      state.topo.fetching = true;
+      try {
+        const snap = await apiGet('overview', { round: r });
+        if (Array.isArray(snap.nodes) && snap.nodes.length) {
+          state.topo.cache.set(r, snap.nodes);
+          state.topo.nodes = snap.nodes;
+          renderSideRouteList(snap.nodes, r);
+        }
+      } catch {
+        // Pertahankan frame sebelumnya jika koneksi sibuk
+      } finally {
+        state.topo.fetching = false;
+      }
     }
 
     function resetPlayTimer() {
       if (state.topo.timerId) clearInterval(state.topo.timerId);
       if (!state.topo.playing) return;
+      const stepRound = state.topo.speed >= 10 ? 5 : (state.topo.speed >= 5 ? 2 : 1);
+      const delayMs = Math.max(180, Math.round(650 / Math.min(5, state.topo.speed)));
+
       state.topo.timerId = setInterval(() => {
-        const next = state.topo.round >= state.topo.maxRound ? 1 : state.topo.round + 1;
-        updateRound(next);
-      }, Math.max(150, Math.round(750 / state.topo.speed)));
+        let next = state.topo.round + stepRound;
+        if (next > state.topo.maxRound) next = 1;
+        loadRoundDataFromDB(next);
+      }, delayMs);
     }
 
     playBtn?.addEventListener('click', () => {
@@ -418,10 +534,15 @@
       playBtn.textContent = state.topo.playing ? '⏸ Jeda' : '▶ Putar';
       resetPlayTimer();
     });
-    speedSel?.addEventListener('change', () => { state.topo.speed = Number(speedSel.value || 1); resetPlayTimer(); });
-    slider?.addEventListener('input', () => updateRound(Number(slider.value)));
+    speedSel?.addEventListener('change', () => {
+      state.topo.speed = Number(speedSel.value || 1);
+      resetPlayTimer();
+    });
+    slider?.addEventListener('input', () => {
+      loadRoundDataFromDB(Number(slider.value));
+    });
 
-    updateRound(state.topo.round);
+    await loadRoundDataFromDB(state.topo.round);
     resetPlayTimer();
     runTopologyBurstAnimation('topology-canvas');
   }
@@ -431,70 +552,107 @@
     if (!c) return;
     const ctx = c.getContext('2d');
     const W = c.width, H = c.height;
-    const sink = { x: W * 0.5, y: 68 };
+    const sink = { x: W * 0.50, y: 68 };
 
+    // Koordinat sebaran 15 node yang proporsional dengan jarak ke Base Station
     const layout = [
-      [0.31, 0.52], [0.21, 0.38], [0.48, 0.79], [0.76, 0.81], [0.28, 0.73],
-      [0.50, 0.55], [0.42, 0.67], [0.33, 0.70], [0.16, 0.62], [0.60, 0.49],
-      [0.55, 0.80], [0.41, 0.59], [0.83, 0.52], [0.75, 0.64], [0.68, 0.88]
+      [0.22, 0.56], // Node 1
+      [0.39, 0.84], // Node 2
+      [0.44, 0.67], // Node 3
+      [0.81, 0.72], // Node 4
+      [0.16, 0.74], // Node 5
+      [0.45, 0.45], // Node 6
+      [0.34, 0.52], // Node 7
+      [0.24, 0.70], // Node 8
+      [0.85, 0.88], // Node 9
+      [0.59, 0.41], // Node 10
+      [0.56, 0.68], // Node 11
+      [0.33, 0.61], // Node 12
+      [0.72, 0.88], // Node 13
+      [0.77, 0.53], // Node 14
+      [0.72, 0.76]  // Node 15
     ];
 
-    state.topo.balls = Array.from({ length: 16 }, (_, i) => ({
-      idx: i % 15,
-      t: Math.random(),
-      spd: 0.005 + Math.random() * 0.004
+    state.topo.balls = Array.from({ length: 15 }, (_, i) => ({
+      nodeIdx: i,
+      t: (i * 0.07) % 1,
+      spd: 0.006 + (i % 4) * 0.0012
     }));
 
     function drawFrame() {
       ctx.clearRect(0, 0, W, H);
       const nodes = state.topo.nodes || [];
+      if (!nodes.length) return;
+
       const pos = new Map([[0, sink]]);
-      nodes.forEach(n => {
-        const xy = layout[(n.id_node - 1) % layout.length];
-        pos.set(n.id_node, { x: xy[0] * W, y: xy[1] * H });
+      nodes.forEach((n, idx) => {
+        const xy = layout[(n.id_node - 1) % layout.length] || [0.5, 0.5];
+        pos.set(n.id_node, { x: xy[0] * W, y: xy[1] * H, node: n });
       });
 
-      // 1. Garis Rute Multi-Hop
+      // 1. Gambar Garis Rute Hanya untuk Node yang Masih Hidup (energi_pct > 0)
       nodes.forEach(n => {
+        const isDead = Boolean(n.is_dead) || Number(n.energi_pct) <= 0;
+        if (isDead) return;
+
         const p1 = pos.get(n.id_node);
         const p2 = pos.get(Number(n.next_hop || 0)) || sink;
         if (!p1 || !p2) return;
-        const cx = (p1.x + p2.x) / 2, cy = (p1.y + p2.y) / 2 - 16;
+
+        const isCh = Number(n.status_ch) === 1;
+        const isRelay = !isCh && Number(n.is_relay) === 1;
+        const cx = (p1.x + p2.x) / 2;
+        const cy = (p1.y + p2.y) / 2 - 16;
+
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.quadraticCurveTo(cx, cy, p2.x, p2.y);
-        ctx.strokeStyle = n.status_ch === 1 ? 'rgba(52, 211, 153, 0.4)' : 'rgba(148, 163, 184, 0.24)';
-        ctx.lineWidth = n.status_ch === 1 ? 1.8 : 1.2;
+        if (isCh) {
+          ctx.strokeStyle = 'rgba(59, 130, 246, 0.55)'; // Garis biru dari CH ke BS/Gateway
+          ctx.lineWidth = 2.2;
+        } else if (isRelay) {
+          ctx.strokeStyle = 'rgba(249, 115, 22, 0.45)'; // Garis oranye dari Relay
+          ctx.lineWidth = 1.8;
+        } else {
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+          ctx.lineWidth = 1.2;
+        }
         ctx.stroke();
       });
 
-      // 2. Bola Cahaya Berjalan di Sepanjang Rute
-      const spdMult = Math.max(0.7, state.topo.speed * 0.75);
+      // 2. Gambar Bola Paket Data Berjalan Hanya dari Node yang Masih Hidup
+      const spdMult = Math.max(0.7, Math.min(3.5, state.topo.speed * 0.65));
       state.topo.balls.forEach(b => {
-        if (!nodes.length) return;
-        const n = nodes[b.idx % nodes.length];
+        const n = nodes[b.nodeIdx % nodes.length];
+        if (!n) return;
+        const isDead = Boolean(n.is_dead) || Number(n.energi_pct) <= 0;
+        if (isDead) return;
+
         const p1 = pos.get(n.id_node);
         const p2 = pos.get(Number(n.next_hop || 0)) || sink;
         if (!p1 || !p2) return;
 
         b.t += b.spd * spdMult;
-        if (b.t >= 1) { b.t = 0; b.idx = (b.idx + 1) % nodes.length; }
+        if (b.t >= 1) b.t = 0;
 
-        const t = b.t, cx = (p1.x + p2.x) / 2, cy = (p1.y + p2.y) / 2 - 16;
+        const t = b.t;
+        const cx = (p1.x + p2.x) / 2;
+        const cy = (p1.y + p2.y) / 2 - 16;
         const x = (1 - t) * (1 - t) * p1.x + 2 * (1 - t) * t * cx + t * t * p2.x;
         const y = (1 - t) * (1 - t) * p1.y + 2 * (1 - t) * t * cy + t * t * p2.y;
 
         const g = ctx.createRadialGradient(x, y, 1, x, y, 10);
         g.addColorStop(0, '#fef08a');
-        g.addColorStop(0.5, 'rgba(250, 204, 21, 0.65)');
+        g.addColorStop(0.5, 'rgba(250, 204, 21, 0.7)');
         g.addColorStop(1, 'rgba(250, 204, 21, 0)');
         ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
-        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fillStyle = '#fef9c3'; ctx.fill();
+        ctx.beginPath(); ctx.arc(x, y, 3.8, 0, Math.PI * 2); ctx.fillStyle = '#fef9c3'; ctx.fill();
       });
 
-      // 3. Base Station Heksagon
+      // 3. Gambar Base Station Heksagon
       ctx.save();
-      ctx.shadowColor = '#ec4899'; ctx.shadowBlur = 16;
+      ctx.shadowColor = '#ec4899';
+      ctx.shadowBlur = 16;
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
         const a = (Math.PI / 3) * i - Math.PI / 6;
@@ -502,25 +660,96 @@
         i === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
       }
       ctx.closePath();
-      ctx.fillStyle = 'rgba(236, 72, 153, 0.16)'; ctx.fill();
-      ctx.lineWidth = 3; ctx.strokeStyle = '#ec4899'; ctx.stroke();
+      ctx.fillStyle = 'rgba(236, 72, 153, 0.16)';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#ec4899';
+      ctx.stroke();
       ctx.restore();
-      ctx.beginPath(); ctx.arc(sink.x, sink.y + 9, 5, 0, Math.PI * 2); ctx.fillStyle = '#fde047'; ctx.fill();
-      ctx.fillStyle = '#e2e8f0'; ctx.font = '600 11px Plus Jakarta Sans'; ctx.textAlign = 'center';
+
+      ctx.beginPath();
+      ctx.arc(sink.x, sink.y + 9, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#fde047';
+      ctx.fill();
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '600 11px Plus Jakarta Sans';
+      ctx.textAlign = 'center';
       ctx.fillText('Base Station', sink.x, sink.y + 44);
 
-      // 4. Lingkaran Node Sensor
+      // 4. Gambar Node Sesuai Peran & Kondisi Baterai:
+      //    - Dead (0%): Abu-abu gelap redup
+      //    - Low-Bat (<=25%): Merah menyala
+      //    - Cluster Head (CH): Biru menyala
+      //    - Relay Node: Oranye menyala
+      //    - Member Normal: Hijau menyala
       nodes.forEach(n => {
         const p = pos.get(n.id_node);
         if (!p) return;
-        const r = n.status_ch === 1 ? 17 : 14;
-        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = n.status_ch === 1 ? 'rgba(22, 101, 52, 0.9)' : 'rgba(20, 83, 45, 0.75)';
+
+        const pct = Math.max(0, Number(n.energi_pct || 0));
+        const isDead = Boolean(n.is_dead) || pct <= 0;
+        const isLow = !isDead && pct <= 25;
+        const isCh = !isDead && Number(n.status_ch) === 1;
+        const isRelay = !isDead && !isCh && Number(n.is_relay) === 1;
+
+        let fillCol = 'rgba(20, 83, 45, 0.82)';
+        let strokeCol = '#22c55e';
+        let glowCol = '#22c55e';
+        let dotCol = '#fef08a';
+        let r = 15;
+
+        if (isDead) {
+          fillCol = 'rgba(30, 41, 59, 0.65)';
+          strokeCol = '#475569';
+          glowCol = 'transparent';
+          dotCol = '#64748b';
+          r = 13;
+        } else if (isLow) {
+          fillCol = 'rgba(153, 27, 27, 0.88)';
+          strokeCol = '#ef4444';
+          glowCol = '#ef4444';
+          dotCol = '#fecaca';
+          r = isCh ? 18 : 15;
+        } else if (isCh) {
+          fillCol = 'rgba(30, 58, 138, 0.9)';
+          strokeCol = '#38bdf8';
+          glowCol = '#3b82f6';
+          dotCol = '#bae6fd';
+          r = 18;
+        } else if (isRelay) {
+          fillCol = 'rgba(154, 52, 18, 0.88)';
+          strokeCol = '#f97316';
+          glowCol = '#f97316';
+          dotCol = '#fed7aa';
+          r = 16;
+        }
+
+        ctx.save();
+        if (!isDead) {
+          ctx.shadowColor = glowCol;
+          ctx.shadowBlur = 12;
+        }
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = fillCol;
         ctx.fill();
-        ctx.lineWidth = 2.2; ctx.strokeStyle = '#4ade80'; ctx.stroke();
-        ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fillStyle = '#fef08a'; ctx.fill();
-        ctx.fillStyle = '#cbd5e1'; ctx.font = '600 11px Plus Jakarta Sans'; ctx.textAlign = 'center';
-        ctx.fillText(`Node ${n.id_node}`, p.x, p.y + r + 14);
+        ctx.lineWidth = 2.4;
+        ctx.strokeStyle = strokeCol;
+        ctx.stroke();
+        ctx.restore();
+
+        // Titik tengah node
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3.6, 0, Math.PI * 2);
+        ctx.fillStyle = dotCol;
+        ctx.fill();
+
+        // Label Node + Persentase Baterai
+        ctx.fillStyle = isDead ? '#64748b' : '#e2e8f0';
+        ctx.font = '600 11px Plus Jakarta Sans';
+        ctx.textAlign = 'center';
+        const roleTag = isDead ? 'DEAD' : (isCh ? 'CH' : (isRelay ? 'REL' : `${Math.round(pct)}%`));
+        ctx.fillText(`Node ${n.id_node} (${roleTag})`, p.x, p.y + r + 14);
       });
 
       state.topo.rafId = requestAnimationFrame(drawFrame);
@@ -529,98 +758,488 @@
   }
 
   // =========================================================================
-  // 3. GRAFIK ENERGI & 4. PERBANDINGAN ALGORITMA
+  // 3. TABEL RIWAYAT SELURUH NODE (Persis Menu Tabel Riwayat Teman)
+  // =========================================================================
+  async function renderHistoryTableView() {
+    stopTopoAnim();
+    state.fullHistoryState = { cursor: 0, loading: false, next: null };
+
+    el.content.innerHTML = `
+      <div class="bento-dashboard">
+        <article class="bento-card">
+          <div class="card-head">
+            <div>
+              <h3>Tabel Riwayat Seluruh Node</h3>
+              <p class="card-sub">Menampilkan seluruh rekaman transmisi dari tabel <strong>data_${escapeHtml(state.algo)}</strong> di Supabase.</p>
+            </div>
+            <div class="header-actions-group">
+              <button type="button" class="danger" id="btn-pdf-full">📄 Download PDF (Full)</button>
+              <a class="button" style="background:#10b981;color:#fff;border:none" href="${API_URL}?algo=${encodeURIComponent(state.algo)}&action=export&node=0">📥 Download CSV</a>
+            </div>
+          </div>
+          <div class="table-responsive" id="full-history-scroll" style="max-height:68vh;overflow-y:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Round</th>
+                  <th>Waktu</th>
+                  <th>Node</th>
+                  <th>Peran</th>
+                  <th>Next Hop</th>
+                  <th>Suhu/Lembab</th>
+                  <th>Voltase</th>
+                  <th>Baterai</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="full-history-body"></tbody>
+            </table>
+            <p id="full-history-status" style="padding:12px;text-align:center;color:var(--text-secondary)">Memuat…</p>
+          </div>
+        </article>
+      </div>
+    `;
+
+    const tbody = document.getElementById('full-history-body');
+    const statusEl = document.getElementById('full-history-status');
+    const scrollBox = document.getElementById('full-history-scroll');
+
+    async function fetchMoreFullHistory(reset = false) {
+      const st = state.fullHistoryState;
+      if (st.loading) return;
+      st.loading = true;
+      if (statusEl) statusEl.textContent = 'Memuat data riwayat…';
+
+      try {
+        const res = await apiGet('history', { node: 0, cursor: reset ? 0 : (st.next || 0), order: 'desc' });
+        const rows = Array.isArray(res.rows) ? res.rows : [];
+        st.next = res.next || null;
+
+        if (rows.length && tbody) {
+          tbody.insertAdjacentHTML('beforeend', rows.map(r => {
+            const jam = String(r.waktu || '').length >= 19 ? String(r.waktu).slice(11, 19) : r.waktu;
+            const isCh = Number(r.status_ch) === 1;
+            const hop = Number(r.next_hop) === 0 ? 'Base Station' : `N-${r.next_hop}`;
+            const pct = Math.round(r.energi_pct);
+            const pctCol = pct <= 15 ? 'color:#ef4444;font-weight:700' : 'font-weight:700';
+
+            return `
+              <tr data-row-id="${r.id}">
+                <td><strong>#${r.ronde}</strong></td>
+                <td>${escapeHtml(jam)}</td>
+                <td><strong>N-${r.id_node}</strong></td>
+                <td><span class="badge-role ${isCh ? 'ch' : 'member'}">${isCh ? 'CH' : 'MEMBER'}</span></td>
+                <td>${escapeHtml(hop)}</td>
+                <td>${Number(r.suhu).toFixed(1)}°C / ${Math.round(r.lembab_udara)}%</td>
+                <td>${Number(r.tegangan).toFixed(2)} V</td>
+                <td style="${pctCol}">${pct}%</td>
+                <td><button type="button" class="danger-link-btn" data-del-row="${r.id}">Hapus</button></td>
+              </tr>
+            `;
+          }).join(''));
+
+          tbody.querySelectorAll('[data-del-row]').forEach(btn => {
+            if (btn.dataset.bound) return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', async () => {
+              const rowId = Number(btn.getAttribute('data-del-row'));
+              await fetch(`${API_URL}?algo=${encodeURIComponent(state.algo)}&action=delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: rowId })
+              });
+              btn.closest('tr')?.remove();
+            });
+          });
+
+          if (statusEl) statusEl.textContent = st.next ? 'Gulir ke bawah untuk memuat lebih banyak…' : 'Seluruh riwayat telah ditampilkan.';
+        } else if (reset && statusEl) {
+          statusEl.textContent = 'Tabel riwayat masih kosong.';
+        }
+      } catch (err) {
+        if (statusEl) statusEl.textContent = err.message;
+      } finally {
+        st.loading = false;
+      }
+    }
+
+    scrollBox?.addEventListener('scroll', () => {
+      if (!state.fullHistoryState.next || state.fullHistoryState.loading) return;
+      if (scrollBox.scrollTop + scrollBox.clientHeight >= scrollBox.scrollHeight - 80) {
+        fetchMoreFullHistory(false);
+      }
+    });
+
+    document.getElementById('btn-pdf-full')?.addEventListener('click', () => window.print());
+    await fetchMoreFullHistory(true);
+  }
+
+  // =========================================================================
+  // 4. GRAFIK & ENERGI (4 Panel Persis Referensi Teman + Bar Indeks per Node)
   // =========================================================================
   async function renderEnergyView() {
     stopTopoAnim();
     const [overview, energyAll] = await Promise.all([
-      state.overviewData ? Promise.resolve(state.overviewData) : apiGet('overview'),
+      apiGet('overview'),
       apiGet('energy_all')
     ]);
+    state.overviewData = overview;
+
     const nodes = Array.isArray(overview.nodes) ? overview.nodes : [];
     const series = Array.isArray(energyAll.series) ? energyAll.series : [];
-    const avgPct = Number(overview.summary?.avg_energi_pct || 80);
+    const nodeSeries = energyAll.node_series || {};
+    const lt = energyAll.lifetime || overview.lifetime || {};
+    const avgPct = Number(overview.summary?.avg_energi_pct || 0);
 
     el.content.innerHTML = `
       <div class="bento-dashboard">
+        <!-- BARIS 1: RESIDUAL ENERGY VS ROUND (MULTI-NODE) & NETWORK LIFETIME -->
+        <div class="middle-bento-grid">
+          <article class="bento-card">
+            <div class="card-head">
+              <div>
+                <h3>Residual Energy vs Round</h3>
+                <p class="card-sub">Rata-rata &amp; kurva residual energy (Joule) tiap node yang tersimpan di database.</p>
+              </div>
+              <span class="pill-badge">0.0 J – 2.0 J</span>
+            </div>
+            <div class="canvas-box">
+              <canvas id="residual-energy-canvas" width="560" height="250"></canvas>
+            </div>
+          </article>
+
+          ${buildLifetimeCardHTML(lt)}
+        </div>
+
+        <!-- BARIS 2: ALIVE NODES & FAIRNESS + PACKET DELIVERY RATIO -->
+        <div class="energy-two-col">
+          <article class="bento-card">
+            <div class="card-head">
+              <div>
+                <h3>Alive Nodes &amp; Fairness</h3>
+                <p class="card-sub">Jumlah node hidup (biru) dan Jain's Fairness Index x Nodes (hijau) setiap round.</p>
+              </div>
+            </div>
+            <div class="canvas-box">
+              <canvas id="alive-fairness-canvas" width="520" height="230"></canvas>
+            </div>
+          </article>
+
+          <article class="bento-card">
+            <div class="card-head">
+              <div>
+                <h3>Packet Delivery Ratio</h3>
+                <p class="card-sub">PDR (%) berdasarkan paket diterima dan paket hilang sepanjang round.</p>
+              </div>
+              <span class="pill-badge">Avg: ${fmtDec(lt.avg_pdr || 0, 1)}%</span>
+            </div>
+            <div class="canvas-box">
+              <canvas id="pdr-chart-canvas" width="520" height="230"></canvas>
+            </div>
+          </article>
+        </div>
+
+        <!-- BARIS 3: INDEKS KAPASITAS ENERGI PER NODE -->
         <article class="bento-card">
-          <div class="card-head"><div><h3>Indeks Kapasitas Energi per Node (energi_pct %)</h3><p class="card-sub">Garis putus-putus menampilkan rata-rata kapasitas energi jaringan (${fmtDec(avgPct, 1)}%)</p></div><span class="pill-badge">Rata-rata: ${fmtDec(avgPct, 1)}%</span></div>
-          <div class="canvas-box"><canvas id="cci-bar-canvas" width="840" height="270"></canvas></div>
+          <div class="card-head">
+            <div>
+              <h3>Indeks Rata-Rata Kapasitas Energi &amp; Masa Hidup per Node</h3>
+              <p class="card-sub">Menampilkan proporsi daya tahan putaran tiap node terhadap putaran maksimum (${lt.lnd || 2024})</p>
+            </div>
+            <span class="pill-badge">Rata-rata Tabel: ${fmtDec(avgPct, 1)}%</span>
+          </div>
+          <div class="canvas-box">
+            <canvas id="cci-bar-canvas" width="840" height="250"></canvas>
+          </div>
         </article>
-        <article class="bento-card">
-          <div class="card-head"><div><h3>Tren Rata-rata Tegangan (V) &amp; Kelembapan Tanah (%) per Ronde</h3><p class="card-sub">Kurva hijau menunjukkan rata-rata persentase energi sepanjang ronde</p></div></div>
-          <div class="canvas-box"><canvas id="area-energy-canvas" width="840" height="240"></canvas></div>
-        </article>
-      </div>`;
-    drawCCIBarChart('cci-bar-canvas', nodes, avgPct);
-    drawAreaEnergyChart('area-energy-canvas', series);
+      </div>
+    `;
+
+    drawResidualEnergyMultiChart('residual-energy-canvas', nodeSeries, lt.lnd || 2024);
+    drawAliveFairnessChart('alive-fairness-canvas', series, lt.lnd || 2024);
+    drawPdrChart('pdr-chart-canvas', series, lt.lnd || 2024);
+    drawCCIBarChart('cci-bar-canvas', nodes, lt.lnd || 2024);
   }
 
+  // =========================================================================
+  // 5. OPTIMIZER VIEW (Analisis Konvergensi GSO & PSO)
+  // =========================================================================
+  async function renderOptimizerView() {
+    stopTopoAnim();
+    const overview = state.overviewData || await apiGet('overview');
+    const lt = overview.lifetime || {};
+
+    el.content.innerHTML = `
+      <div class="bento-dashboard">
+        <div class="middle-bento-grid">
+          <article class="bento-card">
+            <div class="card-head">
+              <div>
+                <h3>Parameter Optimasi Klaster &amp; Rute (${escapeHtml(overview.label || state.algo)})</h3>
+                <p class="card-sub">Fungsi objektif menggabungkan Residual Energy, Jarak Euclidean ke BS, dan Beban Relay Multi-Hop.</p>
+              </div>
+              <span class="pill-badge">Active Optimizer</span>
+            </div>
+            <div class="lifetime-card-list">
+              <div class="lifetime-row"><span>Algoritma Aktif</span><strong>${escapeHtml(overview.label || state.algo)}</strong></div>
+              <div class="lifetime-row"><span>Energi Awal Node (E0)</span><strong>2.0000 Joule (8.40 V)</strong></div>
+              <div class="lifetime-row"><span>Tegangan Cut-Off (DEAD)</span><strong>6.00 V (0%)</strong></div>
+              <div class="lifetime-row"><span>Bobot Fitness (α : Energi, β : Jarak, γ : Derajat CH)</span><strong>0.50 : 0.30 : 0.20</strong></div>
+              <div class="lifetime-row"><span>First Node Dies (FND)</span><strong class="lifetime-val-fnd">Round ${lt.fnd || '-'}</strong></div>
+              <div class="lifetime-row"><span>Last Node Dies (LND)</span><strong class="lifetime-val-lnd">Round ${lt.lnd || '-'}</strong></div>
+            </div>
+          </article>
+          ${buildLifetimeCardHTML(lt)}
+        </div>
+      </div>
+    `;
+  }
+
+  // =========================================================================
+  // 6. PERBANDINGAN (Experiment Comparison Lengkap 10 Kolom Persis Referensi Teman)
+  // =========================================================================
   async function renderCompareView() {
     stopTopoAnim();
     const data = await apiGet('compare');
     const rows = Array.isArray(data.rows) ? data.rows : [];
+
     el.content.innerHTML = `
       <div class="bento-dashboard">
         <article class="bento-card">
-          <div class="card-head"><h3>Tabel Perbandingan 6 Protokol Routing WSN</h3><span class="pill-badge">Supabase PostgreSQL</span></div>
+          <div class="card-head">
+            <div>
+              <h3>Experiment Comparison</h3>
+              <p class="card-sub">Perbandingan eksperimen yang tersimpan di database Supabase PostgreSQL.</p>
+            </div>
+            <span class="pill-badge">6 Protokol WSN</span>
+          </div>
           <div class="table-responsive">
             <table>
-              <thead><tr><th>Algoritma</th><th>Node Terdaftar</th><th>Ronde Maksimum</th><th>Rata-rata Energi (%)</th><th>Rata-rata Tegangan (V)</th><th>Total Rekaman</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Experiment</th>
+                  <th>Protocol</th>
+                  <th>Nodes</th>
+                  <th>Last Round</th>
+                  <th>FND</th>
+                  <th>HND</th>
+                  <th>LND</th>
+                  <th>Avg Energy (J)</th>
+                  <th>Jain Index</th>
+                  <th>PDR</th>
+                </tr>
+              </thead>
               <tbody>
-                ${rows.map(r => `<tr><td><strong>${escapeHtml(r.algorithm)}</strong></td><td>${fmtInt(r.nodes)} Node</td><td><span class="tech-tag ch">Ronde #${fmtInt(r.max_round)}</span></td><td><strong>${fmtDec(r.avg_energi_pct, 1)}%</strong></td><td>${fmtDec(r.avg_tegangan, 2)} V</td><td><strong>${fmtInt(r.records)} baris</strong></td></tr>`).join('')}
+                ${rows.map(r => `
+                  <tr>
+                    <td><strong>${escapeHtml(r.experiment)}</strong></td>
+                    <td>${escapeHtml(r.protocol)}</td>
+                    <td>${r.nodes}</td>
+                    <td>${r.last_round}</td>
+                    <td><strong class="lifetime-val-fnd" style="font-size:.88rem">${r.fnd}</strong></td>
+                    <td><strong class="lifetime-val-hnd" style="font-size:.88rem">${r.hnd}</strong></td>
+                    <td><strong class="lifetime-val-lnd" style="font-size:.88rem">${r.lnd}</strong></td>
+                    <td>${Number(r.avg_energy_j || 0).toFixed(4)}</td>
+                    <td>${Number(r.jain_index || 0).toFixed(4)}</td>
+                    <td><strong>${Number(r.pdr || 0).toFixed(1)}%</strong></td>
+                  </tr>
+                `).join('')}
               </tbody>
             </table>
           </div>
         </article>
-      </div>`;
+      </div>
+    `;
   }
 
+  // =========================================================================
+  // FUNGSI CANVAS CHARTS
+  // =========================================================================
   function drawDonutChart(id, segments) {
     const c = document.getElementById(id); if (!c) return;
-    const ctx = c.getContext('2d'), total = segments.reduce((s, x) => s + x.value, 0) || 1;
-    let angle = -Math.PI / 2; ctx.clearRect(0, 0, c.width, c.height);
+    const ctx = c.getContext('2d');
+    const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+    let angle = -Math.PI / 2;
+    ctx.clearRect(0, 0, c.width, c.height);
     segments.forEach(seg => {
       if (seg.value <= 0) return;
       const slice = (seg.value / total) * Math.PI * 2;
-      ctx.beginPath(); ctx.arc(90, 90, 68, angle, angle + slice);
-      ctx.lineWidth = 22; ctx.strokeStyle = seg.color; ctx.stroke(); angle += slice;
+      ctx.beginPath();
+      ctx.arc(85, 85, 64, angle, angle + slice);
+      ctx.lineWidth = 20;
+      ctx.strokeStyle = seg.color;
+      ctx.stroke();
+      angle += slice;
     });
   }
 
-  function drawCCIBarChart(id, nodes, avgPct) {
+  function drawResidualEnergyMultiChart(id, nodeSeries, maxRound) {
     const c = document.getElementById(id); if (!c) return;
-    const ctx = c.getContext('2d'), W = c.width, H = c.height; ctx.clearRect(0, 0, W, H);
-    const list = nodes.length ? nodes : Array.from({ length: 15 }, (_, i) => ({ id_node: i + 1, energi_pct: 80 }));
-    const padL = 44, padR = 20, padT = 28, padB = 34, plotW = W - padL - padR, plotH = H - padT - padB;
-    const step = plotW / list.length, barW = Math.min(24, step * 0.55);
-    list.forEach((n, i) => {
-      const pct = Math.min(100, Math.max(0, Number(n.energi_pct || 0))), h = Math.max(6, (pct / 100) * plotH);
-      const x = padL + i * step + (step - barW) / 2, y = padT + plotH - h;
-      ctx.fillStyle = pct >= avgPct ? '#a3e635' : '#22c55e';
-      ctx.beginPath(); ctx.roundRect(x, y, barW, h, 5); ctx.fill();
-      ctx.fillStyle = '#829188'; ctx.font = '11px Plus Jakarta Sans'; ctx.textAlign = 'center';
+    const ctx = c.getContext('2d'), W = c.width, H = c.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const padL = 44, padR = 18, padT = 18, padB = 32;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const maxR = Math.max(500, Number(maxRound || 2024));
+
+    // Grid horizontal (0.0 J s/d 2.0 J)
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+    ctx.fillStyle = '#829188';
+    ctx.font = '10px Plus Jakarta Sans';
+    for (let j = 0; j <= 4; j++) {
+      const valJ = (j * 0.5).toFixed(1);
+      const y = padT + plotH - (j / 4) * plotH;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.textAlign = 'right';
+      ctx.fillText(`${valJ}`, padL - 6, y + 3);
+    }
+
+    // Label X-axis Round
+    ctx.textAlign = 'center';
+    for (let r = 0; r <= maxR; r += 500) {
+      const x = padL + (r / maxR) * plotW;
+      ctx.fillText(String(r), x, H - 8);
+    }
+
+    const palette = [
+      '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e',
+      '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6',
+      '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'
+    ];
+
+    const keys = Object.keys(nodeSeries);
+    if (!keys.length) {
+      ctx.fillStyle = '#9ba3ae';
+      ctx.fillText('Belum ada data energi di database.', W / 2, H / 2);
+      return;
+    }
+
+    keys.forEach((nid, idx) => {
+      const pts = nodeSeries[nid];
+      if (!Array.isArray(pts) || pts.length < 2) return;
+      ctx.beginPath();
+      pts.forEach((pt, i) => {
+        const x = padL + (pt.r / maxR) * plotW;
+        const y = padT + plotH - (Math.min(2.0, pt.j) / 2.0) * plotH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = palette[idx % palette.length];
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+    });
+  }
+
+  function drawAliveFairnessChart(id, series, maxRound) {
+    const c = document.getElementById(id); if (!c) return;
+    const ctx = c.getContext('2d'), W = c.width, H = c.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const padL = 38, padR = 18, padT = 22, padB = 30;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const maxR = Math.max(500, Number(maxRound || 2024));
+
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+    ctx.fillStyle = '#829188';
+    ctx.font = '10px Plus Jakarta Sans';
+    [0, 5, 10, 15, 20].forEach(v => {
+      const y = padT + plotH - (v / 20) * plotH;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.textAlign = 'right';
+      ctx.fillText(String(v), padL - 6, y + 3);
+    });
+
+    if (!series.length) return;
+
+    // Garis Biru: Alive Nodes
+    ctx.beginPath();
+    series.forEach((s, i) => {
+      const x = padL + (s.ronde / maxR) * plotW;
+      const y = padT + plotH - (Math.min(20, s.alive_nodes) / 20) * plotH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+
+    // Garis Hijau: Jain x Nodes
+    ctx.beginPath();
+    series.forEach((s, i) => {
+      const x = padL + (s.ronde / maxR) * plotW;
+      const y = padT + plotH - (Math.min(20, s.jain_x_nodes) / 20) * plotH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+  }
+
+  function drawPdrChart(id, series, maxRound) {
+    const c = document.getElementById(id); if (!c) return;
+    const ctx = c.getContext('2d'), W = c.width, H = c.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const padL = 38, padR = 18, padT = 22, padB = 30;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const maxR = Math.max(500, Number(maxRound || 2024));
+
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+    ctx.fillStyle = '#829188';
+    ctx.font = '10px Plus Jakarta Sans';
+    [0, 25, 50, 75, 100].forEach(v => {
+      const y = padT + plotH - (v / 105) * plotH;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.textAlign = 'right';
+      ctx.fillText(String(v), padL - 6, y + 3);
+    });
+
+    if (!series.length) return;
+
+    ctx.beginPath();
+    series.forEach((s, i) => {
+      const x = padL + (s.ronde / maxR) * plotW;
+      const y = padT + plotH - (Math.min(105, s.pdr) / 105) * plotH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#6366f1';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+  }
+
+  function drawCCIBarChart(id, nodes, maxRound) {
+    const c = document.getElementById(id); if (!c) return;
+    const ctx = c.getContext('2d'), W = c.width, H = c.height;
+    ctx.clearRect(0, 0, W, H);
+
+    if (!nodes.length) return;
+    const maxR = Math.max(1, Number(maxRound || 2024));
+    const padL = 44, padR = 20, padT = 26, padB = 34;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const step = plotW / nodes.length;
+    const barW = Math.min(26, step * 0.58);
+
+    nodes.forEach((n, i) => {
+      // Jika energi_pct di akhir = 0, tampilkan tinggi batang berdasarkan persentase masa hidup (ronde / maxR)
+      const pct = Number(n.energi_pct) > 0 ? Number(n.energi_pct) : Math.round((Number(n.ronde || 0) / maxR) * 100);
+      const h = Math.max(8, (Math.min(100, pct) / 100) * plotH);
+      const x = padL + i * step + (step - barW) / 2;
+      const y = padT + plotH - h;
+
+      ctx.fillStyle = pct >= 85 ? '#a3e635' : (pct >= 50 ? '#22c55e' : '#ef4444');
+      ctx.beginPath();
+      ctx.roundRect(x, y, barW, h, 6);
+      ctx.fill();
+
+      ctx.fillStyle = '#9ba3ae';
+      ctx.font = '600 10px Plus Jakarta Sans';
+      ctx.textAlign = 'center';
+      ctx.fillText(`R${n.ronde}`, x + barW / 2, y - 6);
       ctx.fillText(`N${n.id_node}`, x + barW / 2, H - 10);
     });
-    const avgY = padT + plotH - (Math.min(100, avgPct) / 100) * plotH;
-    ctx.setLineDash([5, 5]); ctx.strokeStyle = '#a3e635';
-    ctx.beginPath(); ctx.moveTo(padL, avgY); ctx.lineTo(W - padR, avgY); ctx.stroke(); ctx.setLineDash([]);
   }
 
-  function drawAreaEnergyChart(id, series) {
-    const c = document.getElementById(id); if (!c) return;
-    const ctx = c.getContext('2d'), W = c.width, H = c.height; ctx.clearRect(0, 0, W, H);
-    const vals = series.length >= 2 ? series.map(s => Number(s.avg_energi_pct || 80)) : [92, 90, 89, 88, 87, 86, 85];
-    const pad = 28, plotW = W - pad * 2, plotH = H - pad * 2;
-    const pts = vals.map((v, i) => ({ x: pad + (i / (vals.length - 1)) * plotW, y: pad + plotH - (Math.min(100, v) / 100) * plotH }));
-    const grad = ctx.createLinearGradient(0, pad, 0, H - pad);
-    grad.addColorStop(0, 'rgba(34, 197, 94, 0.45)'); grad.addColorStop(1, 'rgba(34, 197, 94, 0.0)');
-    ctx.beginPath(); ctx.moveTo(pts[0].x, H - pad); pts.forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.lineTo(pts[pts.length - 1].x, H - pad); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-    ctx.beginPath(); pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-    ctx.strokeStyle = '#a3e635'; ctx.lineWidth = 2.5; ctx.stroke();
-  }
-
+  // =========================================================================
+  // MODAL RIWAYAT NODE & SEED DATA
+  // =========================================================================
   async function seedDemoData() {
     try {
       showFeedback('Menambahkan 15 rekaman node uji ke Supabase…');
@@ -634,10 +1253,11 @@
 
   async function openLogModal(nodeId = 0) {
     if (!el.logDialog) return;
-    state.logState = { node: nodeId, cursor: 0, round: 0, order: 'desc', loading: false, next: null };
-    el.logTitle.textContent = nodeId > 0 ? `Riwayat Node #${nodeId}` : 'Seluruh Riwayat Rekaman WSN';
+    state.logState = { node: nodeId, cursor: 0, order: 'desc', loading: false, next: null };
+    el.logTitle.textContent = nodeId > 0 ? `Riwayat Lengkap Node ${nodeId}` : 'Riwayat Lengkap Seluruh Node';
     el.logContext.textContent = `Tabel: data_${state.algo}`;
-    el.logHead.innerHTML = ''; el.logBody.innerHTML = '';
+    el.logHead.innerHTML = '<tr><th>Round</th><th>Waktu</th><th>Peran</th><th>Next Hop</th><th>Baterai</th><th>Voltase</th><th>Suhu &amp; Lembab</th></tr>';
+    el.logBody.innerHTML = '';
     el.downloadLog.href = `${API_URL}?algo=${encodeURIComponent(state.algo)}&action=export&node=${nodeId}`;
     if (!el.logDialog.open) el.logDialog.showModal();
     await loadMoreHistory(true);
@@ -649,26 +1269,45 @@
     try {
       const res = await apiGet('history', { node: st.node, cursor: reset ? 0 : (st.next || 0), order: st.order });
       const rows = Array.isArray(res.rows) ? res.rows : []; st.next = res.next || null;
-      if (reset && rows.length) {
-        const cols = Object.keys(rows[0]);
-        el.logHead.innerHTML = `<tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr>`;
-      }
       if (rows.length) {
-        const cols = Object.keys(rows[0]);
-        el.logBody.insertAdjacentHTML('beforeend', rows.map(r => `<tr>${cols.map(c => `<td>${escapeHtml(r[c])}</td>`).join('')}</tr>`).join(''));
+        el.logBody.insertAdjacentHTML('beforeend', rows.map(r => {
+          const jam = String(r.waktu || '').length >= 19 ? String(r.waktu).slice(11, 19) : r.waktu;
+          const peran = Number(r.status_ch) === 1 ? 'CH' : 'Mem';
+          const hop = Number(r.next_hop) === 0 ? 'BS' : `N-${r.next_hop}`;
+          return `<tr>
+            <td>${r.ronde}</td>
+            <td>${escapeHtml(jam)}</td>
+            <td><strong>${peran}</strong></td>
+            <td>${escapeHtml(hop)}</td>
+            <td><strong>${Math.round(r.energi_pct)}%</strong></td>
+            <td>${Number(r.tegangan).toFixed(2)} V</td>
+            <td>${Number(r.suhu).toFixed(1)}°C / ${Math.round(r.lembab_udara)}%</td>
+          </tr>`;
+        }).join(''));
         el.logStatus.textContent = st.next ? 'Gulir ke bawah untuk memuat lagi…' : 'Semua data ditampilkan.';
       } else if (reset) el.logStatus.textContent = 'Belum ada rekaman log.';
     } catch (err) { el.logStatus.textContent = err.message; }
     finally { st.loading = false; }
   }
 
+  el.logScroll?.addEventListener('scroll', () => {
+    if (!state.logState.next || state.logState.loading) return;
+    if (el.logScroll.scrollTop + el.logScroll.clientHeight >= el.logScroll.scrollHeight - 80) {
+      loadMoreHistory(false);
+    }
+  });
+
+  el.printPdfLog?.addEventListener('click', () => window.print());
+
   async function loadActiveView() {
     el.content?.setAttribute('aria-busy', 'true');
-    if (el.title) el.title.textContent = VIEW_TITLES[state.view] || 'Dashboard';
+    if (el.title) el.title.textContent = VIEW_TITLES[state.view] || 'Dashboard Node';
     try {
       if (state.view === 'nodes') await renderNodesView();
       else if (state.view === 'topology') await renderTopologyView();
+      else if (state.view === 'history') await renderHistoryTableView();
       else if (state.view === 'energy') await renderEnergyView();
+      else if (state.view === 'optimizer') await renderOptimizerView();
       else if (state.view === 'compare') await renderCompareView();
     } catch (err) { showFeedback(err.message, true); }
     finally { el.content?.setAttribute('aria-busy', 'false'); state.timer = REFRESH_INTERVAL; }
@@ -683,8 +1322,18 @@
     });
   });
 
-  el.algoSelect?.addEventListener('change', () => { state.algo = el.algoSelect.value; state.overviewData = null; loadActiveView(); });
-  el.refreshBtn?.addEventListener('click', loadActiveView);
+  el.algoSelect?.addEventListener('change', () => {
+    state.algo = el.algoSelect.value;
+    state.overviewData = null;
+    state.dashboardRound = 0;
+    state.topo.cache.clear();
+    loadActiveView();
+  });
+
+  el.refreshBtn?.addEventListener('click', () => {
+    state.topo.cache.clear();
+    loadActiveView();
+  });
   el.seedBtn?.addEventListener('click', seedDemoData);
   el.allLogBtn?.addEventListener('click', () => openLogModal(0));
   el.closeLogBtn?.addEventListener('click', () => el.logDialog?.close());
@@ -711,16 +1360,17 @@
         body: JSON.stringify({ node: state.pendingDelete === 'node' ? state.logState.node : 0, confirm: el.deleteWord.value.trim() })
       });
       if (!res.ok) throw new Error('Gagal menghapus rekaman.');
-      el.confirmDialog?.close(); el.logDialog?.close(); loadActiveView();
+      state.topo.cache.clear();
+      el.confirmDialog?.close();
+      el.logDialog?.close();
+      loadActiveView();
     } catch (err) { el.deleteError.textContent = err.message; }
   });
 
   setInterval(() => {
     state.timer = Math.max(0, state.timer - 1);
     if (el.countdown) {
-      const m = String(Math.floor(state.timer / 60)).padStart(2, '0');
-      const s = String(state.timer % 60).padStart(2, '0');
-      el.countdown.textContent = `${m}:${s}`;
+      el.countdown.textContent = `${state.timer}s`;
     }
     if (state.timer === 0 && state.view !== 'topology') loadActiveView();
   }, 1000);
