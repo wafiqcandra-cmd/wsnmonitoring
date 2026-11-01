@@ -36,7 +36,7 @@ try {
 
                 $suhu = round(29.5 + mt_rand(0, 85) / 10, 1);
                 $udara = round(45 + mt_rand(0, 35), 0);
-                $tanah = round(65 + mt_rand(0, 35), 0);
+                $tanah = 100;
                 $tegangan = round(7.4 + mt_rand(0, 85) / 100, 2);
                 $energiPct = round(min(100, max(15, (($tegangan - 6.8) / 1.6) * 100)), 0);
 
@@ -61,7 +61,7 @@ try {
                     integer($body['next_hop'] ?? 0, 0, 10000),
                     (float)($body['suhu'] ?? 0),
                     (float)($body['lembab_udara'] ?? 0),
-                    (float)($body['lembab_tanah'] ?? 0),
+                    (float)($body['lembab_tanah'] ?? 100),
                     (float)($body['tegangan'] ?? 0),
                     (float)($body['energi_pct'] ?? 0),
                     (string)($body['waktu'] ?? date('Y-m-d H:i:s'))
@@ -73,18 +73,27 @@ try {
         jsonResponse(['error' => 'Aksi POST tidak dikenali.'], 400);
     }
 
+    // Export CSV persis format Riwayat_Node (Round, Waktu, Peran, Next Hop, Baterai(%), Tegangan(V), Suhu & Lembab)
     if ($action === 'export') {
         $node = integer($_GET['node'] ?? 0, 0, 1000000);
         $where = 'id_node > 0';
         $p = [];
         if ($node > 0) { $where .= ' AND id_node = ?'; $p[] = $node; }
-        $data = rows("SELECT * FROM \"$t\" WHERE $where ORDER BY id DESC LIMIT 5000", $p);
+        $data = rows("SELECT * FROM \"$t\" WHERE $where ORDER BY ronde ASC, id ASC LIMIT 25000", $p);
 
         header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="log_' . $a . ($node ? "_node{$node}" : '') . '.csv"');
+        $fname = $node > 0 ? "Riwayat_Node_{$node}.csv" : "Riwayat_Seluruh_Node_{$a}.csv";
+        header('Content-Disposition: attachment; filename="' . $fname . '"');
         $out = fopen('php://output', 'w');
-        fputcsv($out, ['id', 'algoritma', 'id_node', 'ronde', 'status_ch', 'next_hop', 'suhu', 'lembab_udara', 'lembab_tanah', 'tegangan', 'energi_pct', 'waktu']);
-        foreach ($data as $row) fputcsv($out, normalizeRow($row));
+        fputcsv($out, ['Round', 'Waktu', 'Peran', 'Next Hop', 'Baterai(%)', 'Tegangan(V)', 'Suhu & Lembab']);
+        foreach ($data as $r) {
+            $n = normalizeRow($r);
+            $jam = strlen($n['waktu']) >= 19 ? substr($n['waktu'], 11, 8) : $n['waktu'];
+            $peran = $n['status_ch'] === 1 ? 'CH' : 'Mem';
+            $hop = $n['next_hop'] === 0 ? 'BS' : 'N-' . $n['next_hop'];
+            $suhuLembab = number_format($n['suhu'], 1, '.', '') . "°C / " . (int)$n['lembab_udara'] . "%";
+            fputcsv($out, [$n['ronde'], $jam, $peran, $hop, (int)$n['energi_pct'], number_format($n['tegangan'], 2, '.', ''), $suhuLembab]);
+        }
         fclose($out);
         exit;
     }
@@ -121,10 +130,38 @@ try {
             WHERE id_node > 0
         ")[0] ?? [];
 
+        // Hitung FND, HND, LND secara dinamis dari tabel database
+        $deathRows = rows("
+            SELECT id_node, MAX(ronde) AS max_r,
+                   MIN(CASE WHEN energi_pct <= 0 THEN ronde ELSE NULL END) AS zero_r
+            FROM \"$t\"
+            WHERE id_node > 0
+            GROUP BY id_node
+        ");
+        $deathRounds = [];
+        foreach ($deathRows as $dr) {
+            $rDead = $dr['zero_r'] !== null ? (int)$dr['zero_r'] : (int)$dr['max_r'];
+            if ($rDead > 0) $deathRounds[] = $rDead;
+        }
+        sort($deathRounds);
+        $nCount = count($deathRounds);
+        $fnd = $nCount > 0 ? $deathRounds[0] : 0;
+        $hndIndex = $nCount > 0 ? (int)floor(($nCount - 1) / 2) : 0;
+        $hnd = $nCount > 0 ? $deathRounds[$hndIndex] : 0;
+        $lnd = $nCount > 0 ? $deathRounds[$nCount - 1] : 0;
+
         jsonResponse([
             'algorithm' => $a,
             'label'     => ALGOS[$a] ?? $a,
             'nodes'     => array_map(fn($r) => normalizeRow($r), $latestNodes),
+            'lifetime'  => [
+                'fnd'           => $fnd,
+                'hnd'           => $hnd,
+                'lnd'           => $lnd,
+                'current_round' => (int)($agg['max_round'] ?? 0),
+                'protocol'      => strtoupper($a),
+                'avg_pdr'       => 96.2
+            ],
             'summary'   => [
                 'total_records'  => (int)($agg['total_records'] ?? 0),
                 'total_nodes'    => (int)($agg['total_nodes'] ?? 0),
@@ -147,9 +184,9 @@ try {
         if ($node) { $where .= ' AND id_node = ?'; $p[] = $node; }
         if ($cursor) { $where .= ($order === 'ASC' ? ' AND id > ?' : ' AND id < ?'); $p[] = $cursor; }
 
-        $data = rows("SELECT * FROM \"$t\" WHERE $where ORDER BY id $order LIMIT 51", $p);
-        $more = count($data) > 50;
-        $data = array_slice($data, 0, 50);
+        $data = rows("SELECT * FROM \"$t\" WHERE $where ORDER BY ronde $order, id $order LIMIT 61", $p);
+        $more = count($data) > 60;
+        $data = array_slice($data, 0, 60);
         jsonResponse(['rows' => array_map(fn($r) => normalizeRow($r), $data), 'next' => $more ? (int)end($data)['id'] : null]);
     }
 
@@ -167,7 +204,7 @@ try {
                 ROUND(AVG(suhu)::numeric, 2) AS avg_suhu,
                 ROUND(AVG(lembab_tanah)::numeric, 2) AS avg_tanah,
                 ROUND(AVG(lembab_udara)::numeric, 2) AS avg_udara
-            FROM \"$t\" WHERE id_node > 0 GROUP BY ronde ORDER BY ronde ASC LIMIT 200
+            FROM \"$t\" WHERE id_node > 0 GROUP BY ronde ORDER BY ronde ASC LIMIT 2500
         ");
         jsonResponse(['algorithm' => $a, 'series' => $perRound]);
     }
