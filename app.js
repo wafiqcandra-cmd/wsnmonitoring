@@ -41,13 +41,12 @@
 
   const state = {
     view: 'nodes',
-    displayMode: 'cards',
     algo: el.algoSelect ? el.algoSelect.value : 'multihop_gso',
     timer: REFRESH_INTERVAL,
     overviewData: null,
-    dashboardRound: 0, // 0 = round terakhir di database, atau round pilihan user
+    dashboardRound: 0,
     logState: { node: 0, cursor: 0, order: 'desc', loading: false, next: null },
-    fullHistoryState: { cursor: 0, loading: false, next: null },
+    fullHistoryState: { cursor: 0, order: 'desc', loading: false, next: null },
     pendingDelete: null,
     topo: {
       empty: false,
@@ -108,7 +107,6 @@
 
   function formatSyncTime(waktuStr) {
     if (!waktuStr) return '-';
-    // Ubah "2026-09-22 14:55:01" menjadi "22/09/2026, 14:55:01"
     const m = String(waktuStr).match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2}:\d{2})/);
     if (m) return `${m[3]}/${m[2]}/${m[1]}, ${m[4]}`;
     return waktuStr;
@@ -142,7 +140,7 @@
   }
 
   // =========================================================================
-  // 1. DASHBOARD NODE (6 KPI Cards + Bento Ringkasan + Kartu Kondisi Tiap Node)
+  // 1. DASHBOARD NODE (Langsung 6 KPI Cards -> Kondisi Tiap Node)
   // =========================================================================
   async function renderNodesView() {
     stopTopoAnim();
@@ -216,7 +214,7 @@
 
     el.content.innerHTML = `
       <div class="bento-dashboard">
-        <!-- BARIS 1: 6 KARTU STATUS DASHBOARD NODE (PERSIS REFERENSI TEMAN + GAYA BENTO KITA) -->
+        <!-- BARIS 1: 6 KARTU STATUS DASHBOARD NODE -->
         <div class="six-kpi-grid">
           <article class="bento-card stat6-card">
             <span class="stat6-title">ONLINE</span>
@@ -250,50 +248,11 @@
           </article>
         </div>
 
-        <!-- BARIS 2: BENTO RINGKASAN TANAMAN & NETWORK LIFETIME -->
-        <div class="middle-bento-grid">
-          <article class="bento-card">
-            <div class="card-head">
-              <div>
-                <h3>Distribusi Kesehatan Energi &amp; Sensor Tanaman</h3>
-                <p class="card-sub">Menampilkan kondisi jaringan pada Putaran #${activeR} dari total ${maxR} putaran (${fmtInt(s.total_records)} rekaman)</p>
-              </div>
-              <span class="pill-badge">${escapeHtml(data.label || state.algo)}</span>
-            </div>
-            <div class="donut-layout">
-              <div class="donut-chart-wrap">
-                <canvas id="health-donut-canvas" width="170" height="170"></canvas>
-                <div class="donut-center">
-                  <strong>${nodes.length}</strong>
-                  <span>Node WSN</span>
-                </div>
-              </div>
-              <div class="donut-legend-box">
-                <div class="legend-highlight">
-                  <span class="badge-icon">🌿</span>
-                  <div>
-                    <small>Mikroklimat &amp; Media Tanam</small>
-                    <strong>Tanah ${fmtDec(s.avg_tanah, 1)}% · Suhu ${fmtDec(s.avg_suhu, 1)}°C · Udara ${fmtDec(s.avg_udara, 1)}%</strong>
-                  </div>
-                </div>
-                <div class="legend-grid">
-                  <div class="legend-item"><span class="dot dot-ch"></span><div><small>Cluster Head (Biru)</small><strong>${kpi.ch} Node</strong></div></div>
-                  <div class="legend-item"><span class="dot dot-relay"></span><div><small>Relay Multi-Hop (Oranye)</small><strong>${kpi.relay} Node</strong></div></div>
-                  <div class="legend-item"><span class="dot dot-optimal"></span><div><small>Node Hidup (Online)</small><strong>${kpi.online} Node</strong></div></div>
-                  <div class="legend-item"><span class="dot dot-critical"></span><div><small>Baterai Habis (Dead)</small><strong>${kpi.dead} Node</strong></div></div>
-                </div>
-              </div>
-            </div>
-          </article>
-
-          ${buildLifetimeCardHTML(lt)}
-        </div>
-
-        <!-- BARIS 3: HEADER KONDISI TIAP NODE + FILTER PUTARAN CEPAT -->
+        <!-- BARIS 2: LANGSUNG KONDISI TIAP NODE -->
         <div class="section-header-bar">
           <div>
             <h3>Kondisi Tiap Node</h3>
-            <p class="card-sub">Status hidup/mati, koneksi, role (CH / Relay / Member), sensor, dan energi dipisahkan secara rinci.</p>
+            <p class="card-sub">Status hidup/mati, koneksi, role, sensor, dan energi dipisahkan secara rinci.</p>
           </div>
           <div class="header-actions-group">
             ${maxR > 1 ? `
@@ -301,7 +260,7 @@
                 <span>Inspeksi Round:</span>
                 <select id="dash-round-select">
                   <option value="0" ${state.dashboardRound === 0 ? 'selected' : ''}>Terakhir (Round #${maxR})</option>
-                  <option value="1" ${state.dashboardRound === 1 ? 'selected' : ''}>Awal (Round #1 - 100%)</option>
+                  <option value="1" ${state.dashboardRound === 1 ? 'selected' : ''}>Awal (Round #1 - Semua Hidup)</option>
                   ${lt.fnd ? `<option value="${lt.fnd}" ${state.dashboardRound === Number(lt.fnd) ? 'selected' : ''}>FND (Round #${lt.fnd})</option>` : ''}
                   ${lt.hnd ? `<option value="${lt.hnd}" ${state.dashboardRound === Number(lt.hnd) ? 'selected' : ''}>HND (Round #${lt.hnd})</option>` : ''}
                 </select>
@@ -314,13 +273,6 @@
         ${cardsMarkup}
       </div>
     `;
-
-    drawDonutChart('health-donut-canvas', [
-      { value: kpi.ch, color: '#3b82f6' },
-      { value: kpi.relay, color: '#f97316' },
-      { value: Math.max(0, kpi.online - kpi.ch - kpi.relay), color: '#22c55e' },
-      { value: kpi.dead, color: '#ef4444' }
-    ]);
 
     el.content.querySelectorAll('[data-node-log]').forEach(btn => {
       btn.addEventListener('click', () => openLogModal(Number(btn.getAttribute('data-node-log'))));
@@ -447,7 +399,7 @@
     const subStats = document.getElementById('topo-sub-stats');
     const logList = document.getElementById('topo-log-list');
 
-    function renderSideRouteList(nodes, r) {
+    function renderSideRouteList(nodes) {
       const alive = nodes.filter(n => !n.is_dead && Number(n.energi_pct) > 0);
       const chs = alive.filter(n => Number(n.status_ch) === 1);
       const relays = alive.filter(n => Number(n.status_ch) === 0 && Number(n.is_relay) === 1);
@@ -495,7 +447,7 @@
 
       if (state.topo.cache.has(r)) {
         state.topo.nodes = state.topo.cache.get(r);
-        renderSideRouteList(state.topo.nodes, r);
+        renderSideRouteList(state.topo.nodes);
         return;
       }
 
@@ -506,10 +458,10 @@
         if (Array.isArray(snap.nodes) && snap.nodes.length) {
           state.topo.cache.set(r, snap.nodes);
           state.topo.nodes = snap.nodes;
-          renderSideRouteList(snap.nodes, r);
+          renderSideRouteList(snap.nodes);
         }
       } catch {
-        // Pertahankan frame sebelumnya jika koneksi sibuk
+        // Pertahankan frame sebelumnya
       } finally {
         state.topo.fetching = false;
       }
@@ -554,23 +506,10 @@
     const W = c.width, H = c.height;
     const sink = { x: W * 0.50, y: 68 };
 
-    // Koordinat sebaran 15 node yang proporsional dengan jarak ke Base Station
     const layout = [
-      [0.22, 0.56], // Node 1
-      [0.39, 0.84], // Node 2
-      [0.44, 0.67], // Node 3
-      [0.81, 0.72], // Node 4
-      [0.16, 0.74], // Node 5
-      [0.45, 0.45], // Node 6
-      [0.34, 0.52], // Node 7
-      [0.24, 0.70], // Node 8
-      [0.85, 0.88], // Node 9
-      [0.59, 0.41], // Node 10
-      [0.56, 0.68], // Node 11
-      [0.33, 0.61], // Node 12
-      [0.72, 0.88], // Node 13
-      [0.77, 0.53], // Node 14
-      [0.72, 0.76]  // Node 15
+      [0.22, 0.56], [0.39, 0.84], [0.44, 0.67], [0.81, 0.72], [0.16, 0.74],
+      [0.45, 0.45], [0.34, 0.52], [0.24, 0.70], [0.85, 0.88], [0.59, 0.41],
+      [0.56, 0.68], [0.33, 0.61], [0.72, 0.88], [0.77, 0.53], [0.72, 0.76]
     ];
 
     state.topo.balls = Array.from({ length: 15 }, (_, i) => ({
@@ -585,12 +524,11 @@
       if (!nodes.length) return;
 
       const pos = new Map([[0, sink]]);
-      nodes.forEach((n, idx) => {
+      nodes.forEach(n => {
         const xy = layout[(n.id_node - 1) % layout.length] || [0.5, 0.5];
         pos.set(n.id_node, { x: xy[0] * W, y: xy[1] * H, node: n });
       });
 
-      // 1. Gambar Garis Rute Hanya untuk Node yang Masih Hidup (energi_pct > 0)
       nodes.forEach(n => {
         const isDead = Boolean(n.is_dead) || Number(n.energi_pct) <= 0;
         if (isDead) return;
@@ -608,10 +546,10 @@
         ctx.moveTo(p1.x, p1.y);
         ctx.quadraticCurveTo(cx, cy, p2.x, p2.y);
         if (isCh) {
-          ctx.strokeStyle = 'rgba(59, 130, 246, 0.55)'; // Garis biru dari CH ke BS/Gateway
+          ctx.strokeStyle = 'rgba(59, 130, 246, 0.55)';
           ctx.lineWidth = 2.2;
         } else if (isRelay) {
-          ctx.strokeStyle = 'rgba(249, 115, 22, 0.45)'; // Garis oranye dari Relay
+          ctx.strokeStyle = 'rgba(249, 115, 22, 0.45)';
           ctx.lineWidth = 1.8;
         } else {
           ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
@@ -620,7 +558,6 @@
         ctx.stroke();
       });
 
-      // 2. Gambar Bola Paket Data Berjalan Hanya dari Node yang Masih Hidup
       const spdMult = Math.max(0.7, Math.min(3.5, state.topo.speed * 0.65));
       state.topo.balls.forEach(b => {
         const n = nodes[b.nodeIdx % nodes.length];
@@ -649,7 +586,6 @@
         ctx.beginPath(); ctx.arc(x, y, 3.8, 0, Math.PI * 2); ctx.fillStyle = '#fef9c3'; ctx.fill();
       });
 
-      // 3. Gambar Base Station Heksagon
       ctx.save();
       ctx.shadowColor = '#ec4899';
       ctx.shadowBlur = 16;
@@ -676,12 +612,6 @@
       ctx.textAlign = 'center';
       ctx.fillText('Base Station', sink.x, sink.y + 44);
 
-      // 4. Gambar Node Sesuai Peran & Kondisi Baterai:
-      //    - Dead (0%): Abu-abu gelap redup
-      //    - Low-Bat (<=25%): Merah menyala
-      //    - Cluster Head (CH): Biru menyala
-      //    - Relay Node: Oranye menyala
-      //    - Member Normal: Hijau menyala
       nodes.forEach(n => {
         const p = pos.get(n.id_node);
         if (!p) return;
@@ -738,13 +668,11 @@
         ctx.stroke();
         ctx.restore();
 
-        // Titik tengah node
         ctx.beginPath();
         ctx.arc(p.x, p.y, 3.6, 0, Math.PI * 2);
         ctx.fillStyle = dotCol;
         ctx.fill();
 
-        // Label Node + Persentase Baterai
         ctx.fillStyle = isDead ? '#64748b' : '#e2e8f0';
         ctx.font = '600 11px Plus Jakarta Sans';
         ctx.textAlign = 'center';
@@ -758,11 +686,11 @@
   }
 
   // =========================================================================
-  // 3. TABEL RIWAYAT SELURUH NODE (Persis Menu Tabel Riwayat Teman)
+  // 3. TABEL RIWAYAT SELURUH NODE (Dilengkapi Pengalih Urutan Round #1 / #2024)
   // =========================================================================
   async function renderHistoryTableView() {
     stopTopoAnim();
-    state.fullHistoryState = { cursor: 0, loading: false, next: null };
+    state.fullHistoryState = { cursor: 0, order: state.fullHistoryState?.order || 'desc', loading: false, next: null };
 
     el.content.innerHTML = `
       <div class="bento-dashboard">
@@ -773,6 +701,13 @@
               <p class="card-sub">Menampilkan seluruh rekaman transmisi dari tabel <strong>data_${escapeHtml(state.algo)}</strong> di Supabase.</p>
             </div>
             <div class="header-actions-group">
+              <label class="algorithm-label" title="Ubah urutan putaran">
+                <span>Urutan:</span>
+                <select id="history-order-select">
+                  <option value="desc" ${state.fullHistoryState.order === 'desc' ? 'selected' : ''}>Round Terakhir (#2024 → #1)</option>
+                  <option value="asc" ${state.fullHistoryState.order === 'asc' ? 'selected' : ''}>Round Awal (#1 → #2024 · Semua Node)</option>
+                </select>
+              </label>
               <button type="button" class="danger" id="btn-pdf-full">📄 Download PDF (Full)</button>
               <a class="button" style="background:#10b981;color:#fff;border:none" href="${API_URL}?algo=${encodeURIComponent(state.algo)}&action=export&node=0">📥 Download CSV</a>
             </div>
@@ -803,15 +738,17 @@
     const tbody = document.getElementById('full-history-body');
     const statusEl = document.getElementById('full-history-status');
     const scrollBox = document.getElementById('full-history-scroll');
+    const orderSelect = document.getElementById('history-order-select');
 
     async function fetchMoreFullHistory(reset = false) {
       const st = state.fullHistoryState;
       if (st.loading) return;
       st.loading = true;
+      if (reset && tbody) tbody.innerHTML = '';
       if (statusEl) statusEl.textContent = 'Memuat data riwayat…';
 
       try {
-        const res = await apiGet('history', { node: 0, cursor: reset ? 0 : (st.next || 0), order: 'desc' });
+        const res = await apiGet('history', { node: 0, cursor: reset ? 0 : (st.next || 0), order: st.order });
         const rows = Array.isArray(res.rows) ? res.rows : [];
         st.next = res.next || null;
 
@@ -863,6 +800,13 @@
       }
     }
 
+    orderSelect?.addEventListener('change', () => {
+      state.fullHistoryState.order = orderSelect.value;
+      state.fullHistoryState.cursor = 0;
+      state.fullHistoryState.next = null;
+      fetchMoreFullHistory(true);
+    });
+
     scrollBox?.addEventListener('scroll', () => {
       if (!state.fullHistoryState.next || state.fullHistoryState.loading) return;
       if (scrollBox.scrollTop + scrollBox.clientHeight >= scrollBox.scrollHeight - 80) {
@@ -875,7 +819,7 @@
   }
 
   // =========================================================================
-  // 4. GRAFIK & ENERGI (4 Panel Persis Referensi Teman + Bar Indeks per Node)
+  // 4. GRAFIK & ENERGI (4 Panel + Indeks Kapasitas per Node)
   // =========================================================================
   async function renderEnergyView() {
     stopTopoAnim();
@@ -893,7 +837,6 @@
 
     el.content.innerHTML = `
       <div class="bento-dashboard">
-        <!-- BARIS 1: RESIDUAL ENERGY VS ROUND (MULTI-NODE) & NETWORK LIFETIME -->
         <div class="middle-bento-grid">
           <article class="bento-card">
             <div class="card-head">
@@ -911,7 +854,6 @@
           ${buildLifetimeCardHTML(lt)}
         </div>
 
-        <!-- BARIS 2: ALIVE NODES & FAIRNESS + PACKET DELIVERY RATIO -->
         <div class="energy-two-col">
           <article class="bento-card">
             <div class="card-head">
@@ -939,7 +881,6 @@
           </article>
         </div>
 
-        <!-- BARIS 3: INDEKS KAPASITAS ENERGI PER NODE -->
         <article class="bento-card">
           <div class="card-head">
             <div>
@@ -962,7 +903,7 @@
   }
 
   // =========================================================================
-  // 5. OPTIMIZER VIEW (Analisis Konvergensi GSO & PSO)
+  // 5. OPTIMIZER VIEW
   // =========================================================================
   async function renderOptimizerView() {
     stopTopoAnim();
@@ -996,7 +937,7 @@
   }
 
   // =========================================================================
-  // 6. PERBANDINGAN (Experiment Comparison Lengkap 10 Kolom Persis Referensi Teman)
+  // 6. PERBANDINGAN
   // =========================================================================
   async function renderCompareView() {
     stopTopoAnim();
@@ -1055,24 +996,6 @@
   // =========================================================================
   // FUNGSI CANVAS CHARTS
   // =========================================================================
-  function drawDonutChart(id, segments) {
-    const c = document.getElementById(id); if (!c) return;
-    const ctx = c.getContext('2d');
-    const total = segments.reduce((s, x) => s + x.value, 0) || 1;
-    let angle = -Math.PI / 2;
-    ctx.clearRect(0, 0, c.width, c.height);
-    segments.forEach(seg => {
-      if (seg.value <= 0) return;
-      const slice = (seg.value / total) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.arc(85, 85, 64, angle, angle + slice);
-      ctx.lineWidth = 20;
-      ctx.strokeStyle = seg.color;
-      ctx.stroke();
-      angle += slice;
-    });
-  }
-
   function drawResidualEnergyMultiChart(id, nodeSeries, maxRound) {
     const c = document.getElementById(id); if (!c) return;
     const ctx = c.getContext('2d'), W = c.width, H = c.height;
@@ -1082,7 +1005,6 @@
     const plotW = W - padL - padR, plotH = H - padT - padB;
     const maxR = Math.max(500, Number(maxRound || 2024));
 
-    // Grid horizontal (0.0 J s/d 2.0 J)
     ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
     ctx.fillStyle = '#829188';
     ctx.font = '10px Plus Jakarta Sans';
@@ -1094,7 +1016,6 @@
       ctx.fillText(`${valJ}`, padL - 6, y + 3);
     }
 
-    // Label X-axis Round
     ctx.textAlign = 'center';
     for (let r = 0; r <= maxR; r += 500) {
       const x = padL + (r / maxR) * plotW;
@@ -1150,7 +1071,6 @@
 
     if (!series.length) return;
 
-    // Garis Biru: Alive Nodes
     ctx.beginPath();
     series.forEach((s, i) => {
       const x = padL + (s.ronde / maxR) * plotW;
@@ -1161,7 +1081,6 @@
     ctx.lineWidth = 2.2;
     ctx.stroke();
 
-    // Garis Hijau: Jain x Nodes
     ctx.beginPath();
     series.forEach((s, i) => {
       const x = padL + (s.ronde / maxR) * plotW;
@@ -1218,7 +1137,6 @@
     const barW = Math.min(26, step * 0.58);
 
     nodes.forEach((n, i) => {
-      // Jika energi_pct di akhir = 0, tampilkan tinggi batang berdasarkan persentase masa hidup (ronde / maxR)
       const pct = Number(n.energi_pct) > 0 ? Number(n.energi_pct) : Math.round((Number(n.ronde || 0) / maxR) * 100);
       const h = Math.max(8, (Math.min(100, pct) / 100) * plotH);
       const x = padL + i * step + (step - barW) / 2;
