@@ -16,7 +16,6 @@ try {
         $rawInput = file_get_contents('php://input');
         $body = json_decode($rawInput ?: '{}', true) ?: $_POST;
 
-        // 1. Hapus Rekaman Log
         if ($action === 'delete') {
             if (($body['confirm'] ?? '') !== 'HAPUS') {
                 jsonResponse(['error' => 'Konfirmasi HAPUS tidak valid.'], 422);
@@ -30,7 +29,6 @@ try {
             jsonResponse(['ok' => true, 'deleted' => $deleted]);
         }
 
-        // 2. Isi Data Sampel (Demo) untuk Pengujian Koneksi Supabase
         if ($action === 'seed') {
             $maxR = (int)(rows("SELECT COALESCE(MAX(ronde), 0) AS r FROM \"$t\"")[0]['r'] ?? 0);
             $nextRound = $maxR + 1;
@@ -56,7 +54,6 @@ try {
             jsonResponse(['ok' => true, 'message' => "Berhasil menambahkan data uji Ronde #{$nextRound} (15 Node) ke tabel {$t}."]);
         }
 
-        // 3. Endpoint Ingest Data dari Mikrokontroler ESP32
         if ($action === 'ingest') {
             $idNode    = integer($body['id_node'] ?? 1, 1, 10000);
             $ronde     = integer($body['ronde'] ?? 1, 1, 10000000);
@@ -109,23 +106,32 @@ try {
     }
 
     // =========================================================================
-    // 1. OVERVIEW (Data terbaru tiap node + ringkasan sensor & energi)
+    // 1. OVERVIEW (Mendukung Filter Ronde untuk Mesin Waktu Global)
     // =========================================================================
     if ($action === 'overview') {
-        // Ambil rekaman terbaru untuk masing-masing id_node menggunakan DISTINCT ON PostgreSQL
+        $roundFilter = integer($_GET['round'] ?? 0, 0, 100000000);
+        $whereNode = 'id_node > 0';
+        $paramsNode = [];
+
+        if ($roundFilter > 0) {
+            $whereNode .= ' AND ronde <= ?';
+            $paramsNode[] = $roundFilter;
+        }
+
         $latestNodes = rows("
             SELECT DISTINCT ON (id_node)
                 id, algoritma, id_node, ronde, status_ch, next_hop,
                 suhu, lembab_udara, lembab_tanah, tegangan, energi_pct, waktu
             FROM \"$t\"
-            WHERE id_node > 0
-            ORDER BY id_node ASC, id DESC
-        ");
+            WHERE $whereNode
+            ORDER BY id_node ASC, ronde DESC, id DESC
+        ", $paramsNode);
 
         $agg = rows("
             SELECT
                 COUNT(*) AS total_records,
                 COUNT(DISTINCT id_node) AS total_nodes,
+                COALESCE(MIN(ronde), 1) AS min_round,
                 COALESCE(MAX(ronde), 0) AS max_round,
                 COALESCE(AVG(suhu), 0) AS avg_suhu,
                 COALESCE(AVG(lembab_udara), 0) AS avg_udara,
@@ -139,10 +145,12 @@ try {
         jsonResponse([
             'algorithm' => $a,
             'label'     => ALGOS[$a] ?? $a,
+            'round'     => $roundFilter,
             'nodes'     => array_map(fn($r) => normalizeRow($r), $latestNodes),
             'summary'   => [
                 'total_records'  => (int)($agg['total_records'] ?? 0),
                 'total_nodes'    => (int)($agg['total_nodes'] ?? 0),
+                'min_round'      => (int)($agg['min_round'] ?? 1),
                 'max_round'      => (int)($agg['max_round'] ?? 0),
                 'avg_suhu'       => round((float)($agg['avg_suhu'] ?? 0), 2),
                 'avg_udara'      => round((float)($agg['avg_udara'] ?? 0), 2),
@@ -234,7 +242,7 @@ try {
             WHERE id_node > 0
             GROUP BY ronde
             ORDER BY ronde ASC
-            LIMIT 100
+            LIMIT 250
         ");
 
         jsonResponse([
