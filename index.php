@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#111315">
-  <title>Monitoring WSN &amp; Tanaman</title>
+  <title>WSN Monitor — Research Monitoring System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -18,14 +18,14 @@
         <div class="brand-logo" aria-hidden="true">
           <span></span><span></span><span></span>
         </div>
-        <h1>AGRO WSN MONITOR</h1>
+        <h1>WSN Monitor</h1>
       </div>
 
       <div class="workspace-card">
         <div class="workspace-icon" aria-hidden="true">🌱</div>
         <div class="workspace-info">
-          <span class="workspace-label">Research Monitoring System</span>
-          <strong class="workspace-name">EcoFarm WSN Telemetry</strong>
+          <span class="workspace-label">WSN Monitor</span>
+          <strong class="workspace-name">Research Monitoring System</strong>
         </div>
       </div>
 
@@ -70,7 +70,7 @@
           <span class="status-dot"></span>
           <div>
             <strong>Mode: Advanced Analytics</strong>
-            <small>Supabase PostgreSQL · Online</small>
+            <small>Ready for Scopus Publ.</small>
           </div>
         </div>
       </div>
@@ -117,11 +117,11 @@
       <div id="feedback" role="status" aria-live="polite"></div>
 
       <section id="content" aria-busy="true">
-        <p>Memuat data telemetri tanaman &amp; WSN…</p>
+        <p>Memuat data telemetri WSN…</p>
       </section>
 
       <footer>
-        <strong>Monitoring WSN &amp; Tanaman</strong>
+        <strong>WSN Monitor — Research Monitoring System</strong>
         <span>Database Supabase PostgreSQL · interval pembaruan 60 detik</span>
       </footer>
     </main>
