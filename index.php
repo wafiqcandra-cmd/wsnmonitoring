@@ -7,7 +7,7 @@
   <title>Monitoring WSN &amp; Tanaman</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=<?= time() ?>">
   <script src="app.js?v=<?= time() ?>" defer></script>
 </head>
@@ -24,7 +24,7 @@
       <div class="workspace-card">
         <div class="workspace-icon" aria-hidden="true">🌱</div>
         <div class="workspace-info">
-          <span class="workspace-label">Plant &amp; Sensor Workspace</span>
+          <span class="workspace-label">Research Monitoring System</span>
           <strong class="workspace-name">EcoFarm WSN Telemetry</strong>
         </div>
       </div>
@@ -33,15 +33,23 @@
       <nav aria-label="Menu utama">
         <button data-view="nodes" class="selected">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/></svg>
-          <span>Dashboard</span>
+          <span>Dashboard Node</span>
         </button>
         <button data-view="topology">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-7 12a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm14 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM10.5 8.5 6.5 15m7-6.5 4 6.5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
           <span>Topologi &amp; Rute</span>
         </button>
+        <button data-view="history">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span>Tabel Riwayat</span>
+        </button>
         <button data-view="energy">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 14l4-4 4 3 5-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Grafik &amp; Energi</span>
+        </button>
+        <button data-view="optimizer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.4 7.2H22l-6 4.8 2.4 7.2L12 16.4 5.6 21.2 8 14 2 9.2h7.6L12 2z" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>
+          <span>Optimizer</span>
         </button>
         <button data-view="compare">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4m6-18h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-3-18v18" stroke="currentColor" stroke-width="2" fill="none"/></svg>
@@ -61,8 +69,8 @@
         <div class="system-status">
           <span class="status-dot"></span>
           <div>
-            <strong>Supabase PostgreSQL</strong>
-            <small>ap-southeast-1 · Online</small>
+            <strong>Mode: Advanced Analytics</strong>
+            <small>Supabase PostgreSQL · Online</small>
           </div>
         </div>
       </div>
@@ -71,8 +79,8 @@
     <main>
       <div class="controls">
         <div class="topbar-left">
-          <span class="breadcrumb">Dashboards <span>/</span></span>
-          <span id="title" class="page-title">Dashboard</span>
+          <span class="breadcrumb">WSN Monitor <span>/</span></span>
+          <span id="title" class="page-title">Dashboard Node</span>
         </div>
 
         <div class="topbar-right">
@@ -89,8 +97,8 @@
           </label>
 
           <div class="countdown" title="Interval pembaruan otomatis">
-            <span>Pembaruan berikutnya</span>
-            <strong id="countdown">01:00</strong>
+            <span>Update in:</span>
+            <strong id="countdown">60s</strong>
           </div>
 
           <button id="refresh" class="btn-icon" type="button">Perbarui</button>
@@ -99,8 +107,8 @@
             <summary>Menu Log &amp; Data</summary>
             <div>
               <button id="seed-demo" type="button">+ Isi Data Uji (Demo)</button>
-              <button id="all-log" type="button">View All Log</button>
-              <button id="delete-all" type="button" class="danger-text">Delete All Log</button>
+              <button id="all-log" type="button">Lihat Modal Log</button>
+              <button id="delete-all" type="button" class="danger-text">🗑 Hapus Semua Data</button>
             </div>
           </details>
         </div>
@@ -113,7 +121,7 @@
       </section>
 
       <footer>
-        <strong>Monitoring WSN Tanaman</strong>
+        <strong>Monitoring WSN &amp; Tanaman</strong>
         <span>Database Supabase PostgreSQL · interval pembaruan 60 detik</span>
       </footer>
     </main>
@@ -122,13 +130,14 @@
   <dialog id="log-dialog" aria-labelledby="log-title">
     <div class="modal-head">
       <div>
-        <h2 id="log-title">Riwayat Node</h2>
+        <h2 id="log-title">Riwayat Lengkap Node</h2>
         <p id="log-context" class="muted"></p>
       </div>
       <div class="modal-actions">
-        <a id="download-log" class="button" href="#">Unduh CSV</a>
+        <button id="print-pdf-log" type="button" class="danger">📄 Download PDF Node</button>
+        <a id="download-log" class="button" href="#">📥 Download CSV Node</a>
         <button id="delete-log" class="danger" type="button">Hapus Log</button>
-        <button id="close-log" type="button">Tutup</button>
+        <button id="close-log" type="button">✕</button>
       </div>
     </div>
     <div id="log-scroll" tabindex="0">
