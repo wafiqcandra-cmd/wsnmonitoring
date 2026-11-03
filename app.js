@@ -45,8 +45,8 @@
     timer: REFRESH_INTERVAL,
     overviewData: null,
     dashboardRound: 0,
-    nodeRoleFilter: 'all', // 'all' | 'ch' | 'relay' | 'member' | 'dead'
-    nodeSortBy: 'id',      // 'id' | 'bat_desc' | 'bat_asc' | 'round_desc'
+    nodeRoleFilter: 'all',
+    nodeSortBy: 'id',
     logState: { node: 0, cursor: 0, order: 'desc', loading: false, next: null },
     fullHistoryState: { cursor: 0, order: 'desc', nodeFilter: 0, roleFilter: 'all', loading: false, next: null },
     pendingDelete: null,
@@ -117,7 +117,6 @@
     return waktuStr;
   }
 
-  // Fungsi Baru: Lacak rantai rute lengkap (Multi-Hop Path Tracer) dari Node asal sampai ke SINK (BS)
   function traceMultiHopChain(node, nodeMap) {
     const isDead = Boolean(node.is_dead) || Number(node.energi_pct) <= 0;
     if (isDead) return { pathStr: `N${node.id_node} ✕ Cut-Off`, hops: 0 };
@@ -148,7 +147,7 @@
   }
 
   // =========================================================================
-  // 1. MENU DASHBOARD: PANEL KOMANDO ASIMETRIS + MATRIKS HEATMAP 15-NODE + FILTER
+  // 1. MENU DASHBOARD
   // =========================================================================
   async function renderNodesView() {
     stopTopoAnim();
@@ -167,7 +166,6 @@
     const nodeMap = new Map();
     nodes.forEach(n => nodeMap.set(n.id_node, n));
 
-    // Filter dan Urutkan Node sesuai pilihan pengguna
     let filteredNodes = nodes.filter(n => {
       const isDead = Boolean(n.is_dead) || Number(n.energi_pct) <= 0;
       const isCh = !isDead && Number(n.status_ch) === 1;
@@ -190,7 +188,6 @@
 
     const memCount = Math.max(0, kpi.online - kpi.ch - kpi.relay);
 
-    // Matriks Heatmap 15-Node
     const heatmapCellsHTML = nodes.map(n => {
       const pct = Math.max(0, Math.round(Number(n.energi_pct || 0)));
       const isDead = Boolean(n.is_dead) || pct <= 0;
@@ -233,7 +230,7 @@
           else if (isRelay) { roleClass = 'relay'; roleText = 'RELAY HOP'; podAccent = '#f97316'; }
 
           const stClass = isDead ? 'dead' : (isLow ? 'warning' : 'online');
-          const stText = isDead ? 'CUT-OFF (0%)' : (isLow ? 'LOW-BAT' : 'ONLINE');
+          const stText = isDead ? 'CUT-OFF (0%)' : (isLow ? 'LOW-BAT' : 'AKTIF');
           const chain = traceMultiHopChain(n, nodeMap);
 
           return `
@@ -254,7 +251,6 @@
                 </div>
               </div>
 
-              <!-- FITUR BARU: PITA JEJAK RANTAI ESTAFET MULTI-HOP -->
               <div class="hop-chain-ribbon">
                 <span class="hop-chain-path">${escapeHtml(chain.pathStr)}</span>
                 <span class="hop-count-tag">${chain.hops > 0 ? `${chain.hops} Hop` : 'Putus'}</span>
@@ -304,12 +300,11 @@
 
     el.content.innerHTML = `
       <div class="bento-dashboard">
-        <!-- FITUR BARU: PANEL KOMANDO ASIMETRIS & MATRIKS HEATMAP 15-NODE (BEDA DARI 6 KOTAK SEBARIS) -->
         <div class="command-deck-grid">
           <article class="bento-card">
             <div class="card-head" style="margin-bottom:6px">
               <div>
-                <h3>Pusat Komando Telemetri &amp; Distribusi Peran (Putaran #${activeR})</h3>
+                <h3>Pusat Komando Telemetri &amp; Distribusi Peran</h3>
                 <p class="card-sub">Proporsi real-time status node, klasterisasi, dan keadilan energi Jain pada protokol ${escapeHtml(data.label || state.algo)}.</p>
               </div>
               <span class="pill-badge">FND #${lt.fnd || '-'} · LND #${lt.lnd || '-'}</span>
@@ -370,7 +365,6 @@
           </article>
         </div>
 
-        <!-- FITUR BARU: SMART FILTER PERAN, PENGURUTAN KARTU, & SNAPSHOT PUTARAN -->
         <div class="smart-toolbar">
           <div class="role-filter-pills">
             <button type="button" class="role-pill-btn ${state.nodeRoleFilter === 'all' ? 'active' : ''}" data-rf="all">Semua (${nodes.length})</button>
@@ -431,7 +425,7 @@
   }
 
   // =========================================================================
-  // 2. MENU TOPOLOGI: LAYER ZONA RADIUS CH + PELACAK RANTAI MULTI-HOP PENUH
+  // 2. MENU TOPOLOGI
   // =========================================================================
   async function renderTopologyView() {
     stopTopoAnim();
@@ -482,7 +476,7 @@
         <article class="bento-card">
           <div class="card-head" style="margin-bottom:6px">
             <div>
-              <h3>Kontrol Simulator Siklus Putaran &amp; Lapisan Radar (Round #1 – #${maxR})</h3>
+              <h3>Kontrol Simulator Siklus Putaran &amp; Lapisan Radar</h3>
               <p class="card-sub">Dilengkapi layer visualisasi Zona Cakupan Klaster CH dan pelacak rantai lompatan (Hop-Chain Tracer).</p>
             </div>
             <div class="topo-legend-inline">
@@ -494,7 +488,7 @@
             </div>
           </div>
           <div class="time-machine-controls">
-            <button type="button" id="topo-play" class="btn-play-round ${state.topo.playing ? 'playing' : ''}">${state.topo.playing ? '⏸ Jeda' : '▶ Putar'}</button>
+            <button type="button" id="topo-play" class="btn-play-round ${state.topo.playing ? 'playing' : ''}">${state.topo.playing ? '⏸ Jeda Simulasi' : '▶ Putar Simulasi'}</button>
             <select id="topo-speed" class="speed-select">
               <option value="1" ${state.topo.speed === 1 ? 'selected' : ''}>1x Normal</option>
               <option value="2" ${state.topo.speed === 2 ? 'selected' : ''}>2x Cepat</option>
@@ -647,7 +641,7 @@
     playBtn?.addEventListener('click', () => {
       state.topo.playing = !state.topo.playing;
       playBtn.classList.toggle('playing', state.topo.playing);
-      playBtn.textContent = state.topo.playing ? '⏸ Jeda' : '▶ Putar';
+      playBtn.textContent = state.topo.playing ? '⏸ Jeda Simulasi' : '▶ Putar Simulasi';
       resetPlayTimer();
     });
     speedSel?.addEventListener('change', () => {
@@ -700,9 +694,9 @@
       const nodes = state.topo.nodes || [];
       if (!nodes.length) return;
 
-      // Jaring Koordinat Radar dari SINK
+      // Radar Concentric Rings dari Base Station
       ctx.save();
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.07)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.06)';
       ctx.lineWidth = 1;
       [120, 230, 340].forEach(rad => {
         ctx.beginPath();
@@ -717,7 +711,7 @@
         pos.set(n.id_node, { x: xy[0] * W, y: xy[1] * H, node: n });
       });
 
-      // FITUR BARU: Gambar Zona Cakupan Radio CH (Lingkaran Pendaran Biru/Oranye)
+      // Zona Cakupan Radio CH
       if (state.topo.showChRadius) {
         nodes.forEach(n => {
           const isDead = Boolean(n.is_dead) || Number(n.energi_pct) <= 0;
@@ -826,7 +820,7 @@
       ctx.textAlign = 'center';
       ctx.fillText('SINK / BASE STATION', sink.x, sink.y + 44);
 
-      // Node Sensor (CH = Biru, Relay = Oranye, Low-Bat = Merah, Member = Hijau, Dead = Abu)
+      // Gambar Node (CH = Biru, Relay = Oranye, Low-Bat = Merah, Member = Hijau, Dead = Abu)
       nodes.forEach(n => {
         const p = pos.get(n.id_node);
         if (!p) return;
@@ -907,7 +901,7 @@
   }
 
   // =========================================================================
-  // 3. MENU RIWAYAT: DILENGKAPI FILTER PER NODE & FILTER PERAN CH/MEMBER
+  // 3. MENU RIWAYAT
   // =========================================================================
   async function renderHistoryTableView() {
     stopTopoAnim();
@@ -1076,7 +1070,7 @@
   }
 
   // =========================================================================
-  // 4. MENU ENERGI: HORIZON MILESTONE BAR + 3 GRAFIK + PERINGKAT KETAHANAN 15 NODE
+  // 4. MENU ENERGI
   // =========================================================================
   async function renderEnergyView() {
     stopTopoAnim();
@@ -1092,12 +1086,10 @@
     const lt = energyAll.lifetime || overview.lifetime || {};
     const maxR = Number(lt.lnd || overview.summary?.max_round || 2024);
 
-    // Urutkan node dari yang pertama mati (FND) hingga yang paling awet (LND)
     const rankedNodes = [...nodes].sort((a, b) => Number(a.ronde) - Number(b.ronde));
 
     el.content.innerHTML = `
       <div class="bento-dashboard">
-        <!-- FITUR BARU 1: PITA HORIZON MILESTONE FND - HND - LND (MENGGANTIKAN GRID 2x2 TEMAN) -->
         <article class="bento-card">
           <div class="card-head" style="margin-bottom:4px">
             <div>
@@ -1130,7 +1122,6 @@
           </div>
         </article>
 
-        <!-- BARIS 2: 3 GRAFIK ILMIAH SEJAJAR (RESIDUAL ENERGY, ALIVE/FAIRNESS, PDR) -->
         <div class="energy-three-col">
           <article class="bento-card">
             <div class="card-head">
@@ -1169,7 +1160,6 @@
           </article>
         </div>
 
-        <!-- FITUR BARU 2: TABEL PERINGKAT KETAHANAN & LAJU PENGURASAN ENERGI 15 NODE -->
         <article class="bento-card">
           <div class="card-head">
             <div>
@@ -1230,7 +1220,7 @@
   }
 
   // =========================================================================
-  // 5. MENU OPTIMIZER: SIMULATOR BOBOT FITNESS INTERAKTIF + KURVA KONVERGENSI
+  // 5. MENU OPTIMIZER
   // =========================================================================
   async function renderOptimizerView() {
     stopTopoAnim();
@@ -1362,7 +1352,7 @@
   }
 
   // =========================================================================
-  // 6. MENU KOMPARASI MULTI-PROTOKOL
+  // 6. MENU KOMPARASI
   // =========================================================================
   async function renderCompareView() {
     stopTopoAnim();
@@ -1433,9 +1423,6 @@
     drawCompareBenchmarkChart('compare-bar-canvas', rows);
   }
 
-  // =========================================================================
-  // FUNGSI CANVAS CHARTS
-  // =========================================================================
   function drawCompareBenchmarkChart(id, rows) {
     const c = document.getElementById(id); if (!c) return;
     const ctx = c.getContext('2d'), W = c.width, H = c.height;
@@ -1488,130 +1475,15 @@
     });
   }
 
-  function drawResidualEnergyMultiChart(id, nodeSeries, maxRound) {
-    const c = document.getElementById(id); if (!c) return;
-    const ctx = c.getContext('2d'), W = c.width, H = c.height;
-    ctx.clearRect(0, 0, W, H);
-
-    const padL = 38, padR = 14, padT = 16, padB = 28;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const maxR = Math.max(500, Number(maxRound || 2024));
-
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '10px Plus Jakarta Sans';
-    for (let j = 0; j <= 4; j++) {
-      const valJ = (j * 0.5).toFixed(1);
-      const y = padT + plotH - (j / 4) * plotH;
-      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
-      ctx.textAlign = 'right';
-      ctx.fillText(`${valJ}`, padL - 6, y + 3);
-    }
-
-    const palette = [
-      '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e',
-      '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6',
-      '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'
-    ];
-
-    Object.keys(nodeSeries).forEach((nid, idx) => {
-      const pts = nodeSeries[nid];
-      if (!Array.isArray(pts) || pts.length < 2) return;
-      ctx.beginPath();
-      pts.forEach((pt, i) => {
-        const x = padL + (pt.r / maxR) * plotW;
-        const y = padT + plotH - (Math.min(2.0, pt.j) / 2.0) * plotH;
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      });
-      ctx.strokeStyle = palette[idx % palette.length];
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    });
-  }
-
-  function drawAliveFairnessChart(id, series, maxRound) {
-    const c = document.getElementById(id); if (!c) return;
-    const ctx = c.getContext('2d'), W = c.width, H = c.height;
-    ctx.clearRect(0, 0, W, H);
-
-    const padL = 34, padR = 14, padT = 16, padB = 28;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const maxR = Math.max(500, Number(maxRound || 2024));
-
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '10px Plus Jakarta Sans';
-    [0, 5, 10, 15].forEach(v => {
-      const y = padT + plotH - (v / 16) * plotH;
-      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
-      ctx.textAlign = 'right';
-      ctx.fillText(String(v), padL - 6, y + 3);
-    });
-
-    if (!series.length) return;
-
-    ctx.beginPath();
-    series.forEach((s, i) => {
-      const x = padL + (s.ronde / maxR) * plotW;
-      const y = padT + plotH - (Math.min(16, s.alive_nodes) / 16) * plotH;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.beginPath();
-    series.forEach((s, i) => {
-      const x = padL + (s.ronde / maxR) * plotW;
-      const y = padT + plotH - (Math.min(16, s.jain_x_nodes) / 16) * plotH;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.strokeStyle = '#10b981';
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-  }
-
-  function drawPdrChart(id, series, maxRound) {
-    const c = document.getElementById(id); if (!c) return;
-    const ctx = c.getContext('2d'), W = c.width, H = c.height;
-    ctx.clearRect(0, 0, W, H);
-
-    const padL = 34, padR = 14, padT = 16, padB = 28;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const maxR = Math.max(500, Number(maxRound || 2024));
-
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '10px Plus Jakarta Sans';
-    [0, 50, 100].forEach(v => {
-      const y = padT + plotH - (v / 105) * plotH;
-      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
-      ctx.textAlign = 'right';
-      ctx.fillText(String(v), padL - 6, y + 3);
-    });
-
-    if (!series.length) return;
-
-    ctx.beginPath();
-    series.forEach((s, i) => {
-      const x = padL + (s.ronde / maxR) * plotW;
-      const y = padT + plotH - (Math.min(105, s.pdr) / 105) * plotH;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.strokeStyle = '#10b981';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-
   // =========================================================================
-  // MODAL RIWAYAT NODE & SEED DATA
+  // MODAL LOG & SEED DATA
   // =========================================================================
   async function seedDemoData() {
     try {
-      showFeedback('Menambahkan 15 rekaman node uji ke Supabase…');
+      showFeedback('Menampung 15 node uji ke database…');
       const res = await fetch(`${API_URL}?algo=${encodeURIComponent(state.algo)}&action=seed`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Gagal mengisi data uji');
+      if (!res.ok) throw new Error(data.error || 'Gagal mengisi data');
       showFeedback(data.message);
       await loadActiveView();
     } catch (err) { showFeedback(err.message, true); }
@@ -1621,7 +1493,7 @@
     if (!el.logDialog) return;
     state.logState = { node: nodeId, cursor: 0, order: 'desc', loading: false, next: null };
     el.logTitle.textContent = nodeId > 0 ? `Rekam Jejak Transmisi Node #${nodeId}` : 'Rekam Jejak Seluruh Node';
-    el.logContext.textContent = `Sumber Tabel: data_${state.algo}`;
+    el.logContext.textContent = `Tabel: data_${state.algo}`;
     el.logHead.innerHTML = '<tr><th>Round</th><th>Waktu</th><th>Peran</th><th>Next Hop</th><th>Baterai</th><th>Voltase</th><th>Suhu &amp; Lembab</th></tr>';
     el.logBody.innerHTML = '';
     el.downloadLog.href = `${API_URL}?algo=${encodeURIComponent(state.algo)}&action=export&node=${nodeId}`;
@@ -1667,7 +1539,7 @@
 
   async function loadActiveView() {
     el.content?.setAttribute('aria-busy', 'true');
-    if (el.title) el.title.textContent = VIEW_TITLES[state.view] || 'Komando Telemetri';
+    if (el.title) el.title.textContent = VIEW_TITLES[state.view] || 'Status & Kartu Node';
     try {
       if (state.view === 'nodes') await renderNodesView();
       else if (state.view === 'topology') await renderTopologyView();
@@ -1713,7 +1585,7 @@
 
   el.deleteLogBtn?.addEventListener('click', () => {
     state.pendingDelete = 'node';
-    el.confirmText.textContent = `Hapus rekaman log untuk Node #${state.logState.node}?`;
+    el.confirmText.textContent = `Hapus log untuk Node #${state.logState.node}?`;
     el.confirmDialog?.showModal();
   });
 
@@ -1735,9 +1607,7 @@
 
   setInterval(() => {
     state.timer = Math.max(0, state.timer - 1);
-    if (el.countdown) {
-      el.countdown.textContent = `${state.timer}s`;
-    }
+    if (el.countdown) el.countdown.textContent = `${state.timer}s`;
     if (state.timer === 0 && state.view !== 'topology') loadActiveView();
   }, 1000);
 
