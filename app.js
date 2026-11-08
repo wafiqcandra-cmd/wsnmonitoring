@@ -146,9 +146,6 @@
     return { pathStr: visited.join(' ➔ '), hops };
   }
 
-  // =========================================================================
-  // 1. MENU DASHBOARD
-  // =========================================================================
   async function renderNodesView() {
     stopTopoAnim();
     const params = state.dashboardRound > 0 ? { round: state.dashboardRound } : {};
@@ -424,9 +421,6 @@
     el.content.querySelector('#btn-quick-seed')?.addEventListener('click', seedDemoData);
   }
 
-  // =========================================================================
-  // 2. MENU TOPOLOGI
-  // =========================================================================
   async function renderTopologyView() {
     stopTopoAnim();
     const overview = await apiGet('overview', { round: 1 });
@@ -488,7 +482,7 @@
             </div>
           </div>
           <div class="time-machine-controls">
-            <button type="button" id="topo-play" class="btn-play-round ${state.topo.playing ? 'playing' : ''}">${state.topo.playing ? '⏸ Jeda Simulasi' : '▶ Putar Simulasi'}</button>
+            <button type="button" id="topo-play" class="btn-play-round ${state.topo.playing ? 'playing' : ''}">${state.topo.playing ? '⏸ Jeda' : '▶ Putar'}</button>
             <select id="topo-speed" class="speed-select">
               <option value="1" ${state.topo.speed === 1 ? 'selected' : ''}>1x Normal</option>
               <option value="2" ${state.topo.speed === 2 ? 'selected' : ''}>2x Cepat</option>
@@ -641,7 +635,7 @@
     playBtn?.addEventListener('click', () => {
       state.topo.playing = !state.topo.playing;
       playBtn.classList.toggle('playing', state.topo.playing);
-      playBtn.textContent = state.topo.playing ? '⏸ Jeda Simulasi' : '▶ Putar Simulasi';
+      playBtn.textContent = state.topo.playing ? '⏸ Jeda' : '▶ Putar';
       resetPlayTimer();
     });
     speedSel?.addEventListener('change', () => {
@@ -694,7 +688,6 @@
       const nodes = state.topo.nodes || [];
       if (!nodes.length) return;
 
-      // Radar Concentric Rings dari Base Station
       ctx.save();
       ctx.strokeStyle = 'rgba(56, 189, 248, 0.06)';
       ctx.lineWidth = 1;
@@ -711,7 +704,6 @@
         pos.set(n.id_node, { x: xy[0] * W, y: xy[1] * H, node: n });
       });
 
-      // Zona Cakupan Radio CH
       if (state.topo.showChRadius) {
         nodes.forEach(n => {
           const isDead = Boolean(n.is_dead) || Number(n.energi_pct) <= 0;
@@ -734,7 +726,6 @@
         });
       }
 
-      // Garis Rute Multi-Hop
       nodes.forEach(n => {
         const isDead = Boolean(n.is_dead) || Number(n.energi_pct) <= 0;
         if (isDead) return;
@@ -764,7 +755,6 @@
         ctx.stroke();
       });
 
-      // Animasi Bola Paket Data
       const spdMult = Math.max(0.7, Math.min(3.5, state.topo.speed * 0.65));
       state.topo.balls.forEach(b => {
         const n = nodes[b.nodeIdx % nodes.length];
@@ -793,7 +783,6 @@
         ctx.beginPath(); ctx.arc(x, y, 3.8, 0, Math.PI * 2); ctx.fillStyle = '#fef9c3'; ctx.fill();
       });
 
-      // Base Station (SINK)
       ctx.save();
       ctx.shadowColor = '#10b981';
       ctx.shadowBlur = 18;
@@ -820,7 +809,6 @@
       ctx.textAlign = 'center';
       ctx.fillText('SINK / BASE STATION', sink.x, sink.y + 44);
 
-      // Gambar Node (CH = Biru, Relay = Oranye, Low-Bat = Merah, Member = Hijau, Dead = Abu)
       nodes.forEach(n => {
         const p = pos.get(n.id_node);
         if (!p) return;
@@ -1070,7 +1058,7 @@
   }
 
   // =========================================================================
-  // 4. MENU ENERGI
+  // 4. ANALISIS ENERGI & LIFETIME
   // =========================================================================
   async function renderEnergyView() {
     stopTopoAnim();
@@ -1220,7 +1208,7 @@
   }
 
   // =========================================================================
-  // 5. MENU OPTIMIZER
+  // 5. PARAMETER OPTIMASI GSO / PSO
   // =========================================================================
   async function renderOptimizerView() {
     stopTopoAnim();
@@ -1475,6 +1463,121 @@
     });
   }
 
+  function drawResidualEnergyMultiChart(id, nodeSeries, maxRound) {
+    const c = document.getElementById(id); if (!c) return;
+    const ctx = c.getContext('2d'), W = c.width, H = c.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const padL = 38, padR = 14, padT = 16, padB = 28;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const maxR = Math.max(500, Number(maxRound || 2024));
+
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px Plus Jakarta Sans';
+    for (let j = 0; j <= 4; j++) {
+      const valJ = (j * 0.5).toFixed(1);
+      const y = padT + plotH - (j / 4) * plotH;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.textAlign = 'right';
+      ctx.fillText(`${valJ}`, padL - 6, y + 3);
+    }
+
+    const palette = [
+      '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e',
+      '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6',
+      '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'
+    ];
+
+    Object.keys(nodeSeries).forEach((nid, idx) => {
+      const pts = nodeSeries[nid];
+      if (!Array.isArray(pts) || pts.length < 2) return;
+      ctx.beginPath();
+      pts.forEach((pt, i) => {
+        const x = padL + (pt.r / maxR) * plotW;
+        const y = padT + plotH - (Math.min(2.0, pt.j) / 2.0) * plotH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = palette[idx % palette.length];
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+  }
+
+  function drawAliveFairnessChart(id, series, maxRound) {
+    const c = document.getElementById(id); if (!c) return;
+    const ctx = c.getContext('2d'), W = c.width, H = c.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const padL = 34, padR = 14, padT = 16, padB = 28;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const maxR = Math.max(500, Number(maxRound || 2024));
+
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px Plus Jakarta Sans';
+    [0, 5, 10, 15].forEach(v => {
+      const y = padT + plotH - (v / 16) * plotH;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.textAlign = 'right';
+      ctx.fillText(String(v), padL - 6, y + 3);
+    });
+
+    if (!series.length) return;
+
+    ctx.beginPath();
+    series.forEach((s, i) => {
+      const x = padL + (s.ronde / maxR) * plotW;
+      const y = padT + plotH - (Math.min(16, s.alive_nodes) / 16) * plotH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    series.forEach((s, i) => {
+      const x = padL + (s.ronde / maxR) * plotW;
+      const y = padT + plotH - (Math.min(16, s.jain_x_nodes) / 16) * plotH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+  }
+
+  function drawPdrChart(id, series, maxRound) {
+    const c = document.getElementById(id); if (!c) return;
+    const ctx = c.getContext('2d'), W = c.width, H = c.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const padL = 34, padR = 14, padT = 16, padB = 28;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const maxR = Math.max(500, Number(maxRound || 2024));
+
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px Plus Jakarta Sans';
+    [0, 50, 100].forEach(v => {
+      const y = padT + plotH - (v / 105) * plotH;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.textAlign = 'right';
+      ctx.fillText(String(v), padL - 6, y + 3);
+    });
+
+    if (!series.length) return;
+
+    ctx.beginPath();
+    series.forEach((s, i) => {
+      const x = padL + (s.ronde / maxR) * plotW;
+      const y = padT + plotH - (Math.min(105, s.pdr) / 105) * plotH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
   // =========================================================================
   // MODAL LOG & SEED DATA
   // =========================================================================
@@ -1539,7 +1642,7 @@
 
   async function loadActiveView() {
     el.content?.setAttribute('aria-busy', 'true');
-    if (el.title) el.title.textContent = VIEW_TITLES[state.view] || 'Status & Kartu Node';
+    if (el.title) el.title.textContent = VIEW_TITLES[state.view] || 'Komando Telemetri';
     try {
       if (state.view === 'nodes') await renderNodesView();
       else if (state.view === 'topology') await renderTopologyView();
@@ -1585,7 +1688,7 @@
 
   el.deleteLogBtn?.addEventListener('click', () => {
     state.pendingDelete = 'node';
-    el.confirmText.textContent = `Hapus log untuk Node #${state.logState.node}?`;
+    el.confirmText.textContent = `Hapus rekaman log untuk Node #${state.logState.node}?`;
     el.confirmDialog?.showModal();
   });
 
